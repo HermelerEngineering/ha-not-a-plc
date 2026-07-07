@@ -94,9 +94,9 @@ Home Assistant version (see `requirements-dev.txt`).
 Comparators (`GT/LT/...`) on `REAL` remain phase 3, so the hysteresis case takes
 its two comparisons as BOOL inputs (e.g. HA threshold sensors) and stays pure bit.
 
-## Current task — Phase 2 (graphical status view)
+## Phase 2 is complete — graphical status view (read-only), live in HA
 
-Per `docs/project-plan.md` §5. **Backend (this repo) is done:**
+Per `docs/project-plan.md` §5. **Backend (this repo):**
 
 - Websocket API (`websocket_api.py`), registered once in `async_setup`:
   - `not_a_plc/get_program` returns the canonical IR (`Program.to_dict`).
@@ -105,15 +105,33 @@ Per `docs/project-plan.md` §5. **Backend (this repo) is done:**
     current image once on subscribe.
 - The coordinator freezes the last input snapshot and exposes the merged image
   through `coordinator.state_image()`.
-- Integration tests in `tests/test_websocket.py` (HA-dependent; in `collect_ignore`).
+- Tests in `tests/test_websocket.py` drive the handlers with a fake connection
+  (no HTTP server — avoids the phcc lingering-thread teardown check). HA-dependent,
+  so in `collect_ignore`.
 
-**Remaining for phase 2 — the frontend card (separate repo `ha-not-a-plc-card`):**
+**Frontend card — separate repo `ha-not-a-plc-card`** (Lit/TS, HACS *Dashboard*):
 
-- Read-only Lovelace card (Lit/TS, SVG): call `get_program`, subscribe to state,
-  draw rungs from the IR, colour energised elements live. Keep the "compute power
-  flow" `(IR, state) → energised elements` a pure function, unit-tested separately.
+- Pure `computePowerFlow(program, state) → energised elements` (`src/power-flow.ts`),
+  unit-tested with vitest; SVG renderer in `src/render.ts`; the `not-a-plc-card`
+  element (`src/ladder-card.ts`) calls `get_program` + subscribes to state.
+- Live-verified in HA: the demo rung renders and colours correctly (energised uses
+  the theme's `--state-active-color`, amber in the default dark theme, not literal
+  green).
 
-Carried over (not blocking phase 2):
+**Both repos ship as HACS custom repositories.** Tagged `v0.0.1` releases; a `v*`
+tag runs each repo's release workflow (the card builds `not-a-plc-card.js` and
+attaches it as the release asset HACS installs). Owner: `HermelerEngineering`.
+
+## Next task — Phase 3 (extended function blocks)
+
+Per `docs/project-plan.md` §5: edge detect (`R_TRIG`/`F_TRIG`), timers
+(`TON`/`TOF`/`TP`, counting on the injected clock delta), counters
+(`CTU`/`CTD`), comparators (`GT/GE/LT/LE/EQ/NE` on `REAL`), and `SR`/`RS` latches.
+Function blocks carry state → a separate instance declaration in the IR (`fbs`),
+with retention where meaningful. Extend the golden corpus (e.g. the ventilation
+15-minute run-on via `TOF`, hysteresis via comparators).
+
+Carried over (not blocking phase 3):
 
 - The program is still loaded from the bundled `programs/demo.json`. A
   user-editable program in `.storage` (canonical) with lossless YAML export is
