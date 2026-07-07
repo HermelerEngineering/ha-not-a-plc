@@ -112,7 +112,7 @@ async def test_get_program_errors_when_not_loaded(hass: HomeAssistant) -> None:
     assert 2 not in conn.results
 
 
-async def test_subscribe_state_pushes_initial_and_on_scan(
+async def test_subscribe_state_sends_only_on_change(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _use_program(monkeypatch, _PROGRAM)
@@ -127,14 +127,23 @@ async def test_subscribe_state_pushes_initial_and_on_scan(
     assert len(conn.events) == 1
     assert conn.events[0]["event"]["state"] == {"i": False, "o": False}
 
-    # Drive the input on and advance one scan: a fresh image is pushed.
+    # An unchanged scan must NOT push anything (this is the flood fix).
+    await _tick(hass)
+    assert len(conn.events) == 1
+
+    # Drive the input on: exactly one event for the change.
     hass.states.async_set("binary_sensor.trigger", "on")
     await _tick(hass)
-
     assert len(conn.events) == 2
     assert conn.events[1]["event"]["state"] == {"i": True, "o": True}
 
-    # Unsubscribing removes the coordinator listener.
+    # Steady again across several scans: still no new events.
+    await _tick(hass)
+    await _tick(hass)
+    assert len(conn.events) == 2
+
+    # Unsubscribing removes the coordinator listener entirely.
     conn.subscriptions[5]()
+    hass.states.async_set("binary_sensor.trigger", "off")
     await _tick(hass)
     assert len(conn.events) == 2

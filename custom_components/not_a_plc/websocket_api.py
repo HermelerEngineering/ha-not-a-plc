@@ -68,16 +68,32 @@ def ws_subscribe_state(
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
-    """Stream the process image after each scan; push the current one at once."""
+    """Stream the process image, but only when it actually changes.
+
+    The scan runs at a fixed cadence (e.g. 2 Hz), yet most cycles change nothing.
+    Forwarding the image every cycle floods the websocket connection and HA
+    eventually drops it ("Client unable to keep up with pending messages"). So we
+    push the current image once on subscribe, then only on an actual change. When
+    every value is static the event rate is ~0.
+    """
     coordinator = _get_coordinator(hass)
     if coordinator is None:
         connection.send_error(msg["id"], ERR_NOT_LOADED, "Not a PLC is not set up")
         return
 
+    # Last image sent on *this* subscription. ``None`` (sentinel) is distinct from
+    # an empty/false-valued image, so the first push always goes out.
+    last_sent: dict[str, Any] | None = None
+
     @callback
     def forward_state() -> None:
+        nonlocal last_sent
+        image = coordinator.state_image()
+        if image == last_sent:
+            return
+        last_sent = image
         connection.send_message(
-            websocket_api.event_message(msg["id"], {"state": coordinator.state_image()})
+            websocket_api.event_message(msg["id"], {"state": image})
         )
 
     connection.subscriptions[msg["id"]] = coordinator.async_add_listener(forward_state)
