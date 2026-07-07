@@ -138,6 +138,21 @@ Carried over (not blocking phase 3):
   still pending — only *retained bits* use `.storage` so far, not the program.
 - A commandable `switch` coil variant for commissioning is still optional.
 
+## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
+
+- **Tag model → four kinds.** `input`, `coil`, `memory` (retentive across scans;
+  `retain` adds across-restart), `temp` (scratch, reset each scan). "static" = a
+  non-retained `memory`. Types stay `BOOL`/`REAL`/`TIME`. (`engine/model.py` still
+  has three kinds; `temp` is added when the model work lands.)
+- **Multiple instances.** One config entry per Not a PLC "service" (own device,
+  program, entities, scan loop); soft cap with a scan-load warning, no hard limit.
+  This supersedes the current **single-instance** `config_flow.py` — do not
+  entrench single-instance. The websocket API + frontend must then target a service
+  by `entry_id` (today `websocket_api.py` resolves "the single instance").
+- **Editor = full-page panel.** Shipped from the same frontend repo as the card
+  (`ha-not-a-plc-card`), reusing the render/power-flow layer; the read-only card
+  stays. Not a second card.
+
 ## Open decisions (do not silently pick)
 
 - **Name.** Decided (2026-07-07): product name **"Not a PLC"**, domain `not_a_plc`,

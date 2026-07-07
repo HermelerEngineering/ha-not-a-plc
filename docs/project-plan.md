@@ -21,9 +21,9 @@ The value we are after is the **way of working** (cyclic, with retentive state a
 Five layers, inside out:
 
 1. **Engine (headless).** Pure Python, no HA dependencies in the core. Takes a program model plus a process image (dict of tag → value) and returns a new process image. Fully unit-testable without a running HA.
-2. **Integration / entity layer.** Config flow, coordinator (the cyclic driver), and the platforms that publish coils/memory bits as entities.
-3. **Websocket API.** The bridge to the frontend: `get_program`, `save_program`, and a `subscribe_state` that pushes the full process image after each scan. Both the monitor card and, later, the editor hang off this.
-4. **Frontend.** First a read-only monitor card (SVG), later the same render layer extended into an editor.
+2. **Integration / entity layer.** Config flow, coordinator (the cyclic driver), and the platforms that publish coils/memory bits as entities. **Multiple instances:** each Not a PLC "service" is its own config entry — its own device, program, entities and scan loop — so you can run several independent programs side by side (see §9).
+3. **Websocket API.** The bridge to the frontend: `get_program`, `save_program`, and a `subscribe_state` that pushes the full process image after each scan. Both the monitor card and, later, the editor hang off this. With multiple instances, every command targets a specific service by its `entry_id`.
+4. **Frontend.** Two deliverables from one repo, sharing the render/power-flow layer: a **read-only status card** (SVG, stays as-is) and, later, a **full-page editor panel** reached from the HA menu (like ESPHome Builder). The card is not replaced by the editor — they coexist.
 5. **Program representation (IR).** The serialisable model that flows through all layers — the linchpin of the whole plan (see §3).
 
 The split between layer 1 and the rest matters most: by keeping the engine a pure function (`(program, process_image) → process_image`), you test it with snapshots and it stays independent of HA versions.
@@ -69,11 +69,14 @@ Schema sketch (phase 1, bit logic only):
 }
 ```
 
-**Tag model.** Three kinds, symbolically bound (no `%IX` addresses):
+**Tag model.** Four kinds, symbolically bound (no `%IX` addresses):
 
 - `input` — reads an HA entity into the process image. Holds the `on_unavailable` policy.
 - `coil` — published as an entity; optionally a `writes` binding that calls a service on a real target when it changes (the "executor").
-- `memory` — internal bit, optionally `retain` (survives a restart).
+- `memory` — internal bit/value that persists across scans (retentive). `retain: true` additionally survives a restart (persisted to `.storage`). A non-retained `memory` tag is the "static" variable.
+- `temp` — scratch value, re-initialised every scan. Names an intermediate result without adding to the retained state; never published, never persisted.
+
+Types stay `BOOL` / `REAL` / `TIME`. (Decision locked, see §9.)
 
 **Storage.** Canonical as JSON in HA's `.storage` (that is where the editor writes). In addition, round-trip import/export to a readable YAML/text DSL, so you can keep the program under version control in Forgejo and review it with TortoiseGit/VS Code. The DSL is a 1-to-1 serialisation of the same graph, not a separate language — so round-trips are lossless.
 
@@ -124,15 +127,20 @@ Goal: full bit logic, definable in text.
 
 Done when: the humidity-hysteresis case (two comparators → one latch → coil) runs fully in bit logic, survives a restart, and is green in the tests.
 
-### Phase 2 — Graphical status view
+### Phase 2 — Graphical status view — DONE (shipped, live in HA)
 
 Goal: the "online monitoring" feel, read-only. This builds the render pipeline the editor reuses later.
 
-- Websocket API: `get_program` + `subscribe_state` (process image after each scan).
-- Custom Lovelace card (Lit/TypeScript, SVG): draw the rungs from the IR, colour "energised" elements green based on live state. At 500 ms this looks smooth enough.
-- Read-only; no editing.
+- Websocket API: `get_program` + `subscribe_state` (process image after each scan). ✅
+- Custom Lovelace card (Lit/TypeScript, SVG): draw the rungs from the IR, colour "energised" elements based on live state. At 500 ms this looks smooth enough. ✅ (energised uses the theme's `--state-active-color`, amber in the default dark theme, not literal green.)
+- Read-only; no editing. ✅
 
-Done when: you see your program "flow" live in a dashboard card. Once this works, most of the editor frontend (layout + rendering) is already proven.
+Done: the program "flows" live in a dashboard card; both repos ship as HACS custom repositories (`v0.0.1`).
+
+**Status-card follow-ups (small, not yet done):**
+
+- **Liveness heartbeat.** A small dot in the top-right corner that toggles green on every scan (driven by each `subscribe_state` push), so you can see at a glance that the engine is cycling. Also surfaces a stalled/failed scan (dot stops toggling).
+- Visual-polish notes from live use are gathered and folded into the phase-4 render work (shared render layer), not fixed piecemeal.
 
 ### Phase 3 — Extended function blocks
 
@@ -150,11 +158,34 @@ Done when: the ventilation case with a 15-minute run-on (`TOF`) and hysteresis v
 
 Goal: build logic by dragging; serialises to the same IR the engine executes.
 
-- Editable variant of the phase-2 card: place contacts/coils, wire them, and bind inputs and outputs via the native HA device/entity pickers with domain filter and type inference (see §3a).
-- Validation: dangling wires, unbound tags, warning on multiply-written coils.
-- Save via `save_program`; export to YAML for git.
+**Delivery — a full-page HA panel, not a card.** The editor is its own menu item
+(a custom panel, ESPHome-Builder style), registered via `panel_custom`. It reuses
+the phase-2 render/power-flow layer and ships from the same frontend repo as the
+card. The read-only status card stays exactly as it is, alongside the editor.
 
-Done when: you build a complete network graphically, save it, and it runs without a line of hand-written YAML.
+**Screen layout:**
+
+- **Tag panel** (top): create and manage the program's tags — `input`, `coil`
+  (output), `memory`, `temp` (see §3 tag model) — binding inputs/outputs via the
+  native HA device/entity pickers with domain filter and type inference (see §3a).
+- **Element toolbar** (below the tag panel): the available elements (contact NO/NC,
+  coil `=`/`S`/`R`, parallel branch, `NOT`, and later the phase-3 function blocks),
+  dragged from here onto the work area.
+- **Work area**: a grid canvas holding the networks; drop elements onto the grid
+  and wire them into rungs.
+- **Scan-interval presets**: a selector for `500 ms`, `1 s`, `2 s`, `5 s`, `10 s`;
+  add `250 ms` and `100 ms` only when the scan-time diagnostics (§4) show the
+  instance has headroom at that rate.
+- **Service selector**: with multiple instances (§9), the editor edits one service
+  (config entry) at a time and lets you switch between them.
+
+**Behaviour:**
+
+- Validation: dangling wires, unbound tags, warning on multiply-written coils.
+- Save via `save_program` (canonical JSON in `.storage`); export to YAML for git.
+
+Done when: you build a complete network graphically, save it, and it runs without a
+line of hand-written YAML.
 
 ## 6. Repo and package structure
 
@@ -175,11 +206,19 @@ custom_components/not_a_plc/
   strings.json           # base UI strings (English)
   translations/en.json
 
-# Separate repo for the frontend card (Lit/TS, HACS "Lovelace"):
+# Separate repo for the frontend (Lit/TS, HACS "Dashboard"):
 ha-not-a-plc-card/
+  src/
+    ir.ts                # TS mirror of the IR
+    power-flow.ts        # pure (IR, state) -> energised; shared by card + editor
+    render.ts            # SVG ladder rendering; shared by card + editor
+    ladder-card.ts       # read-only status card (custom:not-a-plc-card)
+    editor-panel.ts      # (phase 4) full-page editor panel (panel_custom)
 ```
 
-Two HACS items: the integration and the card.
+Two HACS items: the integration and the frontend. The frontend repo ships **both**
+the read-only status card and (phase 4) the full-page editor panel, sharing the
+render and power-flow layer so the editor draws exactly what the engine executes.
 
 ## 7. Testing strategy per phase
 
@@ -240,7 +279,27 @@ The exact HACS and brands requirements evolve; verify against the current HACS "
 - **Coil actuation.** Proposal: a coil always publishes its logical truth as a `binary_sensor`, and optionally carries a `writes` binding that calls a service on a real target when it changes. That separates "logic truth" from "actuation" and mirrors your trigger/decision/executor pattern. A `switch` variant (manually overridable) is a nice extra for commissioning, but not the default.
 - **Canonical storage.** JSON in `.storage` as the source of truth (editor-friendly) with lossless YAML export — or the other way round? I lean toward JSON canonical.
 - **Phase-1 scope.** Only `=`/`S`/`R` plus series/parallel/NOT, or pull `R_TRIG`/`F_TRIG` in already? Strictly you do not need edge detection for S/R latches, so I would keep it in phase 3 and keep phase 1 pure bit.
+- **Tag model.** Resolved (2026-07-08): four kinds — `input`, `coil`, `memory`
+  (retentive across scans; `retain` adds across-restart), `temp` (scratch, reset
+  each scan). "static" = a non-retained `memory` tag. Types stay `BOOL`/`REAL`/`TIME`.
+  See §3.
+- **Instances.** Resolved (2026-07-08): support **multiple Not a PLC services**,
+  one **config entry per service** — each with its own device, program, entities
+  and scan loop. No hard cap; instead warn when the combined scan load is heavy,
+  tied to the per-cycle scan-time diagnostics (§4). This supersedes the current
+  single-instance config flow, which must be relaxed to allow multiple entries;
+  the websocket API and the frontend must then target a service by `entry_id`
+  (today they resolve "the single instance"). Schedule alongside the editable-
+  program / editor work.
+- **Editor delivery.** Resolved (2026-07-08): the editor is a **full-page HA panel**
+  (menu item, ESPHome-Builder style), in the **same frontend repo** as the card,
+  reusing the shared render/power-flow layer. The read-only status card stays. See
+  §5 phase 4 and §6.
+- **Status-card heartbeat.** Resolved (2026-07-08): the status card shows a small
+  top-right dot that toggles green each scan (a liveness indicator), driven by the
+  `subscribe_state` push. A near-term card follow-up (see §5 phase 2).
 
 ---
 
-*Next concrete step after sign-off: work out phase 0 — formalise the IR schema and stand up the scaffolding with one working dummy rung and its first tests.*
+*Phases 0–2 are complete and live in HA. Next concrete step: phase 3 — extended
+function blocks (start with comparators on `REAL`, the bridge to analog sensors).*
