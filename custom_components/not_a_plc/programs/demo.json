@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "name": "Phase 0 demo",
+    "description": "Self-contained demo: the coil follows the sun (day = on). Proves the snapshot -> solve -> coil pipeline without depending on user entities."
+  },
+  "scan_interval_ms": 500,
+  "tags": {
+    "sun_up": {
+      "kind": "input",
+      "source": "sun.sun",
+      "type": "BOOL",
+      "on_unavailable": "false"
+    },
+    "daylight": {
+      "kind": "coil",
+      "type": "BOOL"
+    }
+  },
+  "networks": [
+    {
+      "id": "n1",
+      "title": "Daylight demo",
+      "rungs": [
+        {
+          "id": "r1",
+          "title": "Coil follows the sun",
+          "series": [
+            { "type": "contact", "tag": "sun_up", "mode": "NO" }
+          ],
+          "coils": [
+            { "type": "coil", "tag": "daylight", "mode": "=" }
+          ]
+        }
+      ]
+    }
+  ]
+}

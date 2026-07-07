@@ -1,0 +1,9 @@
+# Development / CI dependencies.
+# Keep pytest-homeassistant-custom-component aligned with the Home Assistant
+# version you target; each release pins a specific HA version.
+homeassistant>=2024.1.0
+pytest>=8.0.0
+pytest-homeassistant-custom-component>=0.13.0
+jsonschema>=4.0.0
+ruff>=0.6.0
+mypy>=1.8.0

@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "name": "Humidity hysteresis",
+    "description": "Bathroom fan with hysteresis. Two BOOL comparator inputs (humidity above the high threshold, humidity below the low threshold) drive an S/R latch; the latched memory bit drives the fan. The fan turns on when humidity crosses the high threshold and stays on until it drops below the low threshold."
+  },
+  "scan_interval_ms": 500,
+  "tags": {
+    "humid_high": {
+      "kind": "input",
+      "type": "BOOL",
+      "source": "binary_sensor.bathroom_humidity_above_high",
+      "on_unavailable": "false"
+    },
+    "humid_low": {
+      "kind": "input",
+      "type": "BOOL",
+      "source": "binary_sensor.bathroom_humidity_below_low",
+      "on_unavailable": "false"
+    },
+    "humid": {
+      "kind": "memory",
+      "type": "BOOL",
+      "retain": true
+    },
+    "fan": {
+      "kind": "coil",
+      "type": "BOOL",
+      "writes": { "target": "switch.bathroom_fan" }
+    }
+  },
+  "networks": [
+    {
+      "id": "n1",
+      "title": "Humidity hysteresis",
+      "rungs": [
+        {
+          "id": "r1",
+          "title": "Latch on high",
+          "series": [{ "type": "contact", "tag": "humid_high", "mode": "NO" }],
+          "coils": [{ "type": "coil", "tag": "humid", "mode": "S" }]
+        },
+        {
+          "id": "r2",
+          "title": "Unlatch on low (reset dominant)",
+          "series": [{ "type": "contact", "tag": "humid_low", "mode": "NO" }],
+          "coils": [{ "type": "coil", "tag": "humid", "mode": "R" }]
+        },
+        {
+          "id": "r3",
+          "title": "Drive fan",
+          "series": [{ "type": "contact", "tag": "humid", "mode": "NO" }],
+          "coils": [{ "type": "coil", "tag": "fan", "mode": "=" }]
+        }
+      ]
+    }
+  ]
+}

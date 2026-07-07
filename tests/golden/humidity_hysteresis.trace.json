@@ -1,0 +1,35 @@
+{
+  "comment": "Recorded input->output trace. Each step feeds 'inputs' as the process image and expects 'outputs' after one scan; the previous scan's outputs carry into the next step (retentive latch).",
+  "steps": [
+    {
+      "note": "start dry (below low): latch reset, fan off",
+      "inputs": { "humid_high": false, "humid_low": true },
+      "outputs": { "humid": false, "fan": false }
+    },
+    {
+      "note": "rising through the hysteresis band: nothing latched yet",
+      "inputs": { "humid_high": false, "humid_low": false },
+      "outputs": { "humid": false, "fan": false }
+    },
+    {
+      "note": "crossed the high threshold: latch set, fan on",
+      "inputs": { "humid_high": true, "humid_low": false },
+      "outputs": { "humid": true, "fan": true }
+    },
+    {
+      "note": "falling back into the band: latch holds (hysteresis), fan stays on",
+      "inputs": { "humid_high": false, "humid_low": false },
+      "outputs": { "humid": true, "fan": true }
+    },
+    {
+      "note": "dropped below the low threshold: latch reset, fan off",
+      "inputs": { "humid_high": false, "humid_low": true },
+      "outputs": { "humid": false, "fan": false }
+    },
+    {
+      "note": "both true at once: reset dominates (R rung is last), fan off",
+      "inputs": { "humid_high": true, "humid_low": true },
+      "outputs": { "humid": false, "fan": false }
+    }
+  ]
+}

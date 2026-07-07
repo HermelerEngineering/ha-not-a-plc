@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Not a PLC",
+        "description": "Set up Not a PLC, a cyclic ladder-logic engine. It loads a bundled demo program that follows the sun (day = on)."
+      }
+    },
+    "abort": {
+      "already_configured": "Not a PLC is already set up."
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/HermelerEngineering/ha-not-a-plc/schema/program.schema.json",
+  "title": "Not a PLC ladder program",
+  "type": "object",
+  "required": ["tags", "networks"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": { "type": "object" },
+    "scan_interval_ms": { "type": "integer", "exclusiveMinimum": 0 },
+    "tags": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/tag" }
+    },
+    "networks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/network" }
+    }
+  },
+  "$defs": {
+    "tag": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["input", "coil", "memory"] },
+        "type": { "enum": ["BOOL", "REAL", "TIME"] },
+        "source": { "type": "string" },
+        "retain": { "type": "boolean" },
+        "on_unavailable": { "enum": ["false", "hold"] },
+        "true_states": { "type": "array", "items": { "type": "string" } },
+        "writes": {
+          "type": "object",
+          "required": ["target"],
+          "additionalProperties": false,
+          "properties": { "target": { "type": "string" } }
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "required": ["id", "rungs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "rungs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/rung" } }
+      }
+    },
+    "rung": {
+      "type": "object",
+      "required": ["id", "series", "coils"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "series": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/element" } },
+        "coils": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/coil" } }
+      }
+    },
+    "element": {
+      "oneOf": [
+        { "$ref": "#/$defs/contact" },
+        { "$ref": "#/$defs/branch" },
+        { "$ref": "#/$defs/negation" }
+      ]
+    },
+    "negation": {
+      "type": "object",
+      "required": ["not"],
+      "additionalProperties": false,
+      "properties": {
+        "not": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/element" }
+        }
+      }
+    },
+    "contact": {
+      "type": "object",
+      "required": ["type", "tag"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "contact" },
+        "tag": { "type": "string" },
+        "mode": { "enum": ["NO", "NC"] }
+      }
+    },
+    "branch": {
+      "type": "object",
+      "required": ["branch"],
+      "additionalProperties": false,
+      "properties": {
+        "branch": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/element" }
+          }
+        }
+      }
+    },
+    "coil": {
+      "type": "object",
+      "required": ["type", "tag"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "coil" },
+        "tag": { "type": "string" },
+        "mode": { "enum": ["=", "S", "R"] }
+      }
+    }
+  }
+}
