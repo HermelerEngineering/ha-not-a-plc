@@ -1,13 +1,15 @@
 """Phase-2 websocket tests (require pytest-homeassistant-custom-component).
 
-Exercise the read-only status-view API end-to-end: ``get_program`` returns the
-IR, and ``subscribe_state`` pushes the process image immediately and again after
-each scan.
+We exercise the command handlers directly against a fake connection rather than
+through ``hass_ws_client``. That keeps the tests focused on our logic and avoids
+starting the real HTTP server (whose executor-shutdown thread otherwise trips
+pytest-homeassistant-custom-component's lingering-resource teardown check).
 """
 
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import Any
 
 import pytest
 from homeassistant.core import HomeAssistant
@@ -16,11 +18,15 @@ from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_fire_time_changed,
 )
-from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
 from custom_components import not_a_plc as integration
 from custom_components.not_a_plc.const import DOMAIN
 from custom_components.not_a_plc.engine import Program
+from custom_components.not_a_plc.websocket_api import (
+    ERR_NOT_LOADED,
+    ws_get_program,
+    ws_subscribe_state,
+)
 
 # A minimal program: one BOOL input drives one coil (= mode).
 _PROGRAM = {
@@ -44,6 +50,25 @@ _PROGRAM = {
 }
 
 
+class FakeConnection:
+    """Captures what a websocket command handler sends back."""
+
+    def __init__(self) -> None:
+        self.results: dict[int, Any] = {}
+        self.errors: dict[int, tuple[str, str]] = {}
+        self.events: list[Any] = []
+        self.subscriptions: dict[int, Any] = {}
+
+    def send_result(self, msg_id: int, result: Any = None) -> None:
+        self.results[msg_id] = result
+
+    def send_error(self, msg_id: int, code: str, message: str) -> None:
+        self.errors[msg_id] = (code, message)
+
+    def send_message(self, message: Any) -> None:
+        self.events.append(message)
+
+
 def _use_program(monkeypatch: pytest.MonkeyPatch, data: dict) -> None:
     program = Program.from_dict(data)
     monkeypatch.setattr(integration, "_load_default_program", lambda: program)
@@ -63,50 +88,53 @@ async def _tick(hass: HomeAssistant) -> None:
 
 
 async def test_get_program_returns_ir(
-    hass: HomeAssistant,
-    hass_ws_client: WebSocketGenerator,
-    monkeypatch: pytest.MonkeyPatch,
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _use_program(monkeypatch, _PROGRAM)
     hass.states.async_set("binary_sensor.trigger", "off")
     await _setup(hass)
 
-    client = await hass_ws_client(hass)
-    await client.send_json({"id": 1, "type": "not_a_plc/get_program"})
-    msg = await client.receive_json()
+    conn = FakeConnection()
+    ws_get_program(hass, conn, {"id": 1, "type": "not_a_plc/get_program"})
 
-    assert msg["success"]
-    program = msg["result"]["program"]
+    program = conn.results[1]["program"]
     assert program["meta"]["name"] == "WS demo"
     assert program["tags"]["i"]["kind"] == "input"
     assert program["tags"]["i"]["source"] == "binary_sensor.trigger"
     assert program["networks"][0]["rungs"][0]["coils"][0]["tag"] == "o"
 
 
+async def test_get_program_errors_when_not_loaded(hass: HomeAssistant) -> None:
+    conn = FakeConnection()
+    ws_get_program(hass, conn, {"id": 2, "type": "not_a_plc/get_program"})
+
+    assert conn.errors[2][0] == ERR_NOT_LOADED
+    assert 2 not in conn.results
+
+
 async def test_subscribe_state_pushes_initial_and_on_scan(
-    hass: HomeAssistant,
-    hass_ws_client: WebSocketGenerator,
-    monkeypatch: pytest.MonkeyPatch,
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _use_program(monkeypatch, _PROGRAM)
     hass.states.async_set("binary_sensor.trigger", "off")
     await _setup(hass)
 
-    client = await hass_ws_client(hass)
-    await client.send_json({"id": 5, "type": "not_a_plc/subscribe_state"})
+    conn = FakeConnection()
+    ws_subscribe_state(hass, conn, {"id": 5, "type": "not_a_plc/subscribe_state"})
 
-    # First the subscribe acknowledgement, then the immediate current image.
-    ack = await client.receive_json()
-    assert ack["success"]
-
-    initial = await client.receive_json()
-    assert initial["type"] == "event"
-    assert initial["event"]["state"] == {"i": False, "o": False}
+    # Subscribe acknowledged, and the current image pushed immediately.
+    assert 5 in conn.results
+    assert len(conn.events) == 1
+    assert conn.events[0]["event"]["state"] == {"i": False, "o": False}
 
     # Drive the input on and advance one scan: a fresh image is pushed.
     hass.states.async_set("binary_sensor.trigger", "on")
     await _tick(hass)
 
-    update = await client.receive_json()
-    assert update["type"] == "event"
-    assert update["event"]["state"] == {"i": True, "o": True}
+    assert len(conn.events) == 2
+    assert conn.events[1]["event"]["state"] == {"i": True, "o": True}
+
+    # Unsubscribing removes the coordinator listener.
+    conn.subscriptions[5]()
+    await _tick(hass)
+    assert len(conn.events) == 2
