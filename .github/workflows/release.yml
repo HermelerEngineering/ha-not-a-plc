@@ -1,0 +1,24 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create the GitHub release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # An integration needs no build step: HACS installs the
+      # custom_components/not_a_plc folder from the tagged source. The release
+      # object just has to exist so HACS can offer this version.
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

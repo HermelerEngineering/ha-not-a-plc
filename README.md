@@ -34,15 +34,24 @@ See [`docs/project-plan.md`](docs/project-plan.md) for the full phased plan
 (bit logic → graphical status view → function blocks → graphical editor) and the
 route toward becoming an official HACS integration.
 
-## Install (development)
+## Install via HACS (custom repository)
 
 This repo is a standard HACS custom-integration layout (`custom_components/not_a_plc`).
 
-1. Copy `custom_components/not_a_plc` into your Home Assistant `config/custom_components/`
-   directory (or add the repo as a HACS custom repository, category *Integration*).
-2. Restart Home Assistant.
-3. Add the **Not a PLC** integration via *Settings → Devices & Services → Add integration*.
-4. You should get a `binary_sensor.not_a_plc_daylight` that is `on` during the day.
+1. In Home Assistant: **HACS → ⋮ (top right) → Custom repositories**.
+2. Repository: `https://github.com/HermelerEngineering/ha-not-a-plc`
+   — Category: **Integration**. Add it.
+3. Open the new **Not a PLC** entry and **Download** it.
+4. **Restart Home Assistant.**
+5. Add the integration via *Settings → Devices & Services → Add integration → Not a PLC*.
+6. You should get a `binary_sensor.not_a_plc_daylight` that is `on` during the day.
+
+For the live status view, also install the companion
+[**Not a PLC Card**](https://github.com/HermelerEngineering/ha-not-a-plc-card)
+(HACS category *Dashboard*).
+
+Prefer a copy-in install? Copy `custom_components/not_a_plc` into your Home
+Assistant `config/custom_components/` directory and restart.
 
 ## Develop
 
