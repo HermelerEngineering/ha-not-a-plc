@@ -16,5 +16,8 @@ htmlcov/
 .DS_Store
 *.swp
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # Home Assistant test artifacts
 .storage/
