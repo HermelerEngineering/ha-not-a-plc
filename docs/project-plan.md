@@ -135,12 +135,44 @@ Goal: the "online monitoring" feel, read-only. This builds the render pipeline t
 - Custom Lovelace card (Lit/TypeScript, SVG): draw the rungs from the IR, colour "energised" elements based on live state. At 500 ms this looks smooth enough. ✅ (energised uses the theme's `--state-active-color`, amber in the default dark theme, not literal green.)
 - Read-only; no editing. ✅
 
-Done: the program "flows" live in a dashboard card; both repos ship as HACS custom repositories (`v0.0.1`).
+Done: the program "flows" live in a dashboard card; both repos ship as HACS custom repositories (`v0.0.1`). Phase 2 is frozen — new status-view work lands in phase 2A, not here.
 
-**Status-card follow-ups (small, not yet done):**
+### Phase 2A — Status-view polish & multiple services (next up)
 
-- **Liveness heartbeat.** A small dot in the top-right corner that toggles green on every scan (driven by each `subscribe_state` push), so you can see at a glance that the engine is cycling. Also surfaces a stalled/failed scan (dot stops toggling).
-- Visual-polish notes from live use are gathered and folded into the phase-4 render work (shared render layer), not fixed piecemeal.
+Goal: finish the monitoring experience and let one HA run several independent
+programs — all managed from the UI. Pick this up before phase 3.
+
+**Everything via the UI — no YAML/JSON.** The user configures services and picks
+what to view entirely through the HA interface; hand-editing YAML/JSON is never
+required. (Program *editing* itself is the phase-4 editor; here it's service
+lifecycle + the card.)
+
+- **Multiple services (config entry per instance).** Relax the single-instance
+  config flow so *Add integration → Not a PLC* creates another service, each with
+  its own device, program, entities and scan loop. Name each service in the flow.
+  Soft cap with a scan-load warning (tie to the §4 scan-time diagnostics), no hard
+  limit. The websocket API and card must target a service by `entry_id` (they
+  resolve "the single instance" today). See §9.
+  - *Dependency:* a per-service program only becomes meaningful once programs are
+    user-owned (currently every entry loads the bundled `demo.json`). Sequence this
+    with the editable-program-in-`.storage` work; until then services share the
+    demo program.
+- **Card: service selector.** A card option to choose which service (`entry_id`) it
+  renders, so each dashboard card can show a different program.
+- **Card visual polish (concrete fixes from live use):**
+  - **Larger text.** Tag/mode/coil labels are hard to read — bump the font sizes.
+  - **Align the left rail.** The energised left stub must connect to the network's
+    vertical rail (the white line); today there is a gap so the coloured stub does
+    not meet the rail.
+  - **Coils as `( )`.** Draw coils as a parenthesis pair `( )` (as in common PLC
+    packages), not a circle. `S`/`R` shown inside as `(S)` / `(R)`.
+- **Liveness heartbeat.** A small dot in the top-right corner that toggles green on
+  every scan (driven by each `subscribe_state` push), so you can see at a glance
+  that the engine is cycling; a stalled/failed scan shows as the dot stopping.
+
+Done when: you can create a second Not a PLC service from the UI, point a card at
+it via the selector, and the card reads clearly with rail-aligned rungs, `( )`
+coils and a blinking heartbeat.
 
 ### Phase 3 — Extended function blocks
 
@@ -285,12 +317,16 @@ The exact HACS and brands requirements evolve; verify against the current HACS "
   See §3.
 - **Instances.** Resolved (2026-07-08): support **multiple Not a PLC services**,
   one **config entry per service** — each with its own device, program, entities
-  and scan loop. No hard cap; instead warn when the combined scan load is heavy,
-  tied to the per-cycle scan-time diagnostics (§4). This supersedes the current
-  single-instance config flow, which must be relaxed to allow multiple entries;
-  the websocket API and the frontend must then target a service by `entry_id`
-  (today they resolve "the single instance"). Schedule alongside the editable-
-  program / editor work.
+  and scan loop, **created and configured entirely from the UI (never YAML/JSON)**.
+  No hard cap; instead warn when the combined scan load is heavy, tied to the
+  per-cycle scan-time diagnostics (§4). This supersedes the current single-instance
+  config flow, which must be relaxed to allow multiple entries; the websocket API
+  and the frontend must then target a service by `entry_id` (today they resolve
+  "the single instance"), and the card gets a **service selector**. First delivered
+  in phase 2A (see §5).
+- **UI-only, no hand-editing.** The user's standing preference: services, options
+  and (via the phase-4 editor) programs are all managed through the HA interface.
+  No step in normal use should require editing YAML or JSON by hand.
 - **Editor delivery.** Resolved (2026-07-08): the editor is a **full-page HA panel**
   (menu item, ESPHome-Builder style), in the **same frontend repo** as the card,
   reusing the shared render/power-flow layer. The read-only status card stays. See

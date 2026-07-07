@@ -122,16 +122,26 @@ Per `docs/project-plan.md` §5. **Backend (this repo):**
 tag runs each repo's release workflow (the card builds `not-a-plc-card.js` and
 attaches it as the release asset HACS installs). Owner: `HermelerEngineering`.
 
-## Next task — Phase 3 (extended function blocks)
+## Next task — Phase 2A (status-view polish & multiple services)
 
-Per `docs/project-plan.md` §5: edge detect (`R_TRIG`/`F_TRIG`), timers
-(`TON`/`TOF`/`TP`, counting on the injected clock delta), counters
-(`CTU`/`CTD`), comparators (`GT/GE/LT/LE/EQ/NE` on `REAL`), and `SR`/`RS` latches.
-Function blocks carry state → a separate instance declaration in the IR (`fbs`),
-with retention where meaningful. Extend the golden corpus (e.g. the ventilation
-15-minute run-on via `TOF`, hysteresis via comparators).
+Per `docs/project-plan.md` §5. Do this before phase 3. **Everything via the UI —
+no YAML/JSON** (standing user preference).
 
-Carried over (not blocking phase 3):
+- **Multiple services:** relax the single-instance config flow so *Add integration*
+  creates another service (own device, program, entities, scan loop); soft cap +
+  scan-load warning. Websocket API + card must target a service by `entry_id`.
+- **Card service selector:** card option to choose which `entry_id` it renders.
+- **Card visual fixes (in `ha-not-a-plc-card` render layer):** larger label fonts;
+  connect the energised left stub to the network's vertical rail (no gap); draw
+  coils as `( )` (with `(S)`/`(R)`), not a circle.
+- **Liveness heartbeat:** top-right dot toggling green each scan (from `subscribe_state`).
+
+Then Phase 3 (extended function blocks): edge detect (`R_TRIG`/`F_TRIG`), timers
+(`TON`/`TOF`/`TP`), counters (`CTU`/`CTD`), comparators (`GT/…/NE` on `REAL`),
+`SR`/`RS`. Function blocks carry state → a separate instance declaration in the IR
+(`fbs`). Extend the golden corpus.
+
+Carried over (not blocking phase 2A):
 
 - The program is still loaded from the bundled `programs/demo.json`. A
   user-editable program in `.storage` (canonical) with lossless YAML export is
