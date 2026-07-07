@@ -159,16 +159,36 @@ lifecycle + the card.)
     demo program.
 - **Card: service selector.** A card option to choose which service (`entry_id`) it
   renders, so each dashboard card can show a different program.
-- **Card visual polish (concrete fixes from live use):**
-  - **Larger text.** Tag/mode/coil labels are hard to read — bump the font sizes.
-  - **Align the left rail.** The energised left stub must connect to the network's
-    vertical rail (the white line); today there is a gap so the coloured stub does
-    not meet the rail.
-  - **Coils as `( )`.** Draw coils as a parenthesis pair `( )` (as in common PLC
-    packages), not a circle. `S`/`R` shown inside as `(S)` / `(R)`.
-- **Liveness heartbeat.** A small dot in the top-right corner that toggles green on
-  every scan (driven by each `subscribe_state` push), so you can see at a glance
-  that the engine is cycling; a stalled/failed scan shows as the dot stopping.
+- **Card visual polish (done, shipped v0.0.2):** larger label fonts; the energised
+  left stub now connects to the network's vertical rail (no gap); coils drawn as a
+  parenthesis pair `( )` with `(S)`/`(R)`, not a circle. Further tweaks are gathered
+  for the phase-4 render pass.
+- **Liveness heartbeat (done, v0.0.3).** A top-right dot that blinks. Driven by a
+  **client-side timer at `scan_interval_ms`**, not by the state stream — the card
+  deliberately gets no per-cycle traffic (see streaming strategy below), so it
+  cannot observe each scan over the wire. It is a "configured to cycle" cue, not
+  true liveness. *Follow-up (optional):* a throttled server-side liveness tick
+  (~1 Hz) so the dot also reflects a genuinely stalled/failed engine.
+
+**Streaming strategy — why on-change, and how it scales.** The v0.0.2 flood fix
+made `subscribe_state` push only when the process image changes. The problem was
+never payload size or tag count; it was pushing *unconditionally every cycle* to a
+connection that could not drain, filling HA's 4096-message buffer until it dropped
+the socket. On-change removes the dominant cost (most tags are static most cycles).
+As programs grow, two follow-ups keep it bounded — schedule with phase 3/4:
+
+- **Send diffs, not the whole image.** Emit only the tags that changed (like HA's
+  own `subscribe_entities`), so a single bit flip in a 500-tag program ships one
+  key, not 500.
+- **Scope the image to what the card renders, and quantise.** Stream the booleans
+  the card colours (energised + coil/memory states), not raw `REAL` values. Analog
+  comparisons surface as BOOL results that only change at thresholds. If a numeric
+  value is ever displayed, round/quantise it so jitter is not a "change".
+- **Rate-cap / coalesce (the general safeguard).** Cap frontend updates to a few Hz
+  regardless of scan rate; within a window send only the latest state. This
+  decouples engine cadence from network cadence, so a faster scan or a busy program
+  never floods a slow consumer. The engine keeps scanning at its interval; only the
+  *notification* rate to the frontend is bounded.
 
 Done when: you can create a second Not a PLC service from the UI, point a card at
 it via the selector, and the card reads clearly with rail-aligned rungs, `( )`
