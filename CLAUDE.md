@@ -94,13 +94,24 @@ Home Assistant version (see `requirements-dev.txt`).
 Comparators (`GT/LT/...`) on `REAL` remain phase 3, so the hysteresis case takes
 its two comparisons as BOOL inputs (e.g. HA threshold sensors) and stays pure bit.
 
-## Next task — Phase 2 (graphical status view)
+## Current task — Phase 2 (graphical status view)
 
-Per `docs/project-plan.md` §5:
+Per `docs/project-plan.md` §5. **Backend (this repo) is done:**
 
-- Websocket API: `get_program` + `subscribe_state` (process image after each scan).
-- Read-only Lovelace card (Lit/TS, SVG): draw rungs from the IR, colour energised
-  elements live.
+- Websocket API (`websocket_api.py`), registered once in `async_setup`:
+  - `not_a_plc/get_program` returns the canonical IR (`Program.to_dict`).
+  - `not_a_plc/subscribe_state` streams the full process image (inputs + memory +
+    coils) after each scan via `coordinator.async_add_listener`, and pushes the
+    current image once on subscribe.
+- The coordinator freezes the last input snapshot and exposes the merged image
+  through `coordinator.state_image()`.
+- Integration tests in `tests/test_websocket.py` (HA-dependent; in `collect_ignore`).
+
+**Remaining for phase 2 — the frontend card (separate repo `ha-not-a-plc-card`):**
+
+- Read-only Lovelace card (Lit/TS, SVG): call `get_program`, subscribe to state,
+  draw rungs from the IR, colour energised elements live. Keep the "compute power
+  flow" `(IR, state) → energised elements` a pure function, unit-tested separately.
 
 Carried over (not blocking phase 2):
 

@@ -15,7 +15,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.typing import ConfigType
 
+from . import websocket_api
 from .const import DATA_COORDINATOR, DEFAULT_PROGRAM_FILE, DOMAIN
 from .coordinator import LadderCoordinator
 from .engine import Program, ProgramError
@@ -30,6 +32,12 @@ def _load_default_program() -> Program:
     path = Path(__file__).parent / "programs" / DEFAULT_PROGRAM_FILE
     data = json.loads(path.read_text(encoding="utf-8"))
     return Program.from_dict(data)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the read-only status-view websocket commands once per install."""
+    websocket_api.async_register(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

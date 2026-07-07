@@ -41,4 +41,9 @@ if _HA_AVAILABLE:
 else:
     # Home Assistant is not installed: skip the integration modules so the pure
     # engine + schema tests still run locally.
-    collect_ignore = ["test_init.py", "test_config_flow.py", "test_integration.py"]
+    collect_ignore = [
+        "test_init.py",
+        "test_config_flow.py",
+        "test_integration.py",
+        "test_websocket.py",
+    ]

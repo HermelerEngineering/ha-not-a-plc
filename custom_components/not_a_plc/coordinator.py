@@ -49,6 +49,9 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
         )
         self.program = program
         self._previous: dict[str, bool] = {}
+        # Last frozen input snapshot, exposed to the websocket status view so the
+        # frontend can colour input contacts as well as coils/memory bits.
+        self._last_inputs: dict[str, Any] = {}
         # Last successfully-read value per input tag, for on_unavailable="hold".
         self._input_history: dict[str, Any] = {}
         # Precompute the per-tag "true state" sets (lower-cased) for BOOL inputs.
@@ -136,6 +139,8 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
         except ProgramError as err:
             raise UpdateFailed(f"program error: {err}") from err
 
+        self._last_inputs = image
+
         await self._write_on_change(outputs)
         self._previous = outputs
         if self._retained_tags:
@@ -158,3 +163,17 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
                 {"entity_id": tag.writes.target},
                 blocking=False,
             )
+
+    # --- Status view --------------------------------------------------------
+
+    def state_image(self) -> dict[str, Any]:
+        """The full process image after the last scan: inputs + memory + coils.
+
+        This is what the read-only status view subscribes to. Keys are tag names;
+        values are booleans (BOOL) or floats (REAL). Returns an empty dict before
+        the first scan has produced any state.
+        """
+        image: dict[str, Any] = dict(self._last_inputs)
+        if self.data:
+            image.update(self.data)
+        return image
