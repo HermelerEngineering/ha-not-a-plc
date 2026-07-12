@@ -26,6 +26,7 @@ from typing import Any
 from .errors import ProgramError
 from .model import (
     IMPLEMENTED_COIL_MODES,
+    TIMER_TYPES,
     Branch,
     Compare,
     Contact,
@@ -133,17 +134,66 @@ def _solve_fb(
 ) -> bool:
     """Compute a function block's output Q from its input and previous state.
 
-    Records the new instance state in ``fb_new`` and returns Q (which becomes the
-    rung power leaving the block).
+    ``clk`` is the rung power reaching the block (the CLK / IN). Records the new
+    instance state in ``fb_new`` and returns Q (which becomes the rung power
+    leaving the block).
     """
     state = fb_prev.get(name, {})
-    if block.type == "R_TRIG":
+    btype = block.type
+
+    if btype == "R_TRIG":
         q = clk and not bool(state.get("clk", False))
-    elif block.type == "F_TRIG":
+        fb_new[name] = {"clk": clk, "q": q}
+        return q
+    if btype == "F_TRIG":
         q = (not clk) and bool(state.get("clk", False))
-    else:
-        raise ProgramError(f"function-block type '{block.type}' is not implemented")
-    fb_new[name] = {"clk": clk, "q": q}
+        fb_new[name] = {"clk": clk, "q": q}
+        return q
+
+    if btype not in TIMER_TYPES:
+        raise ProgramError(f"function-block type '{btype}' is not implemented")
+
+    # Timers accumulate wall-clock time via the injected ``now`` (never scan
+    # counts), so they stay deterministic under a fake clock in tests.
+    if now is None:
+        raise ProgramError(f"function block '{name}' ({btype}) needs a clock")
+    now_ms = now.timestamp() * 1000.0
+    dt = max(0.0, now_ms - float(state.get("last_ms", now_ms)))
+    preset = float(block.params["preset_ms"])
+    et = float(state.get("et", 0.0))
+
+    if btype == "TON":
+        # On-delay: Q goes true once IN has been true for the preset.
+        if clk:
+            et = min(preset, et + dt)
+            q = et >= preset
+        else:
+            et = 0.0
+            q = False
+    elif btype == "TOF":
+        # Off-delay: Q follows IN up immediately, and holds for the preset after
+        # IN drops (run-on).
+        if clk:
+            q = True
+            et = 0.0
+        elif bool(state.get("q", False)):
+            et = et + dt
+            q = et < preset
+        else:
+            q = False
+            et = preset
+    else:  # TP — pulse: a rising edge of IN gives Q true for exactly the preset.
+        q = bool(state.get("q", False))
+        if not q and clk and not bool(state.get("clk", False)):
+            q = True
+            et = 0.0
+        if q:
+            et = et + dt
+            if et >= preset:
+                q = False
+                et = preset
+
+    fb_new[name] = {"clk": clk, "q": q, "et": et, "last_ms": now_ms}
     return q
 
 

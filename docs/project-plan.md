@@ -213,7 +213,11 @@ Goal: from bit logic to real control blocks. Function blocks carry state → sep
   the previous state — pure, threaded in/out. The coordinator keeps fb state in RAM
   (no per-scan disk) and publishes `Q` in `state_image`. DSL `fb <name> = <TYPE>` +
   `@instance`; schema; golden `edge_detect`; card renders fb as a labelled box.
-- Timers: `TON`, `TOF`, `TP` — counting on wall-clock delta per cycle (via the injected clock), not on scan counts. (`evaluate` already takes `now`; build on `fbs`.)
+- **Timers `TON`/`TOF`/`TP` — done (v0.5.0).** Single-input, counting on the
+  injected `now` delta (never scan counts): `_solve_fb` accumulates elapsed time per
+  instance and requires `now`. Instance param `preset_ms`; golden `off_delay` (TOF
+  run-on); the golden trace format grew an optional per-step `now_ms`. Ships with the
+  boolean `Q`; the REAL `ET` output is not yet surfaced (see the resumption notes).
 - Counters: `CTU`, `CTD` (`CTUD` optional).
 - Latch `SR`/`RS` as explicit blocks.
 

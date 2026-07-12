@@ -12,6 +12,7 @@ lossless DSL round-trip.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -41,7 +42,15 @@ def test_golden_trace_replays(golden: tuple[dict, dict]) -> None:
     previous: dict[str, bool] | None = None
     fb_state: dict[str, dict] = {}
     for i, step in enumerate(trace["steps"]):
-        result = evaluate(program, step["inputs"], previous=previous, fbs=fb_state)
+        # Timers need a clock; a step may carry an absolute time in epoch ms.
+        now = (
+            datetime.fromtimestamp(step["now_ms"] / 1000, tz=UTC)
+            if "now_ms" in step
+            else None
+        )
+        result = evaluate(
+            program, step["inputs"], now=now, previous=previous, fbs=fb_state
+        )
         assert result == step["outputs"], f"step {i} ({step.get('note', '')})"
         previous = result
         fb_state = result.fbs

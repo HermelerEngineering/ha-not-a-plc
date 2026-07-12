@@ -39,7 +39,8 @@ IMPLEMENTED_COIL_MODES: frozenset[str] = frozenset({"=", "S", "R"})
 COMPARE_OPS: frozenset[str] = frozenset({"GT", "GE", "LT", "LE", "EQ", "NE"})
 
 # Function-block types the engine implements (phase 3, growing).
-KNOWN_FB_TYPES: frozenset[str] = frozenset({"R_TRIG", "F_TRIG"})
+TIMER_TYPES: frozenset[str] = frozenset({"TON", "TOF", "TP"})
+KNOWN_FB_TYPES: frozenset[str] = frozenset({"R_TRIG", "F_TRIG"}) | TIMER_TYPES
 
 
 # --- Helpers ----------------------------------------------------------------
@@ -192,6 +193,12 @@ class FunctionBlock:
             f"{where}: unknown function-block type '{type_}'",
         )
         params = {k: v for k, v in data.items() if k != "type"}
+        if type_ in TIMER_TYPES:
+            preset = params.get("preset_ms")
+            _require(
+                isinstance(preset, int) and not isinstance(preset, bool) and preset > 0,
+                f"{where}: a timer needs a positive integer 'preset_ms'",
+            )
         return cls(type=type_, params=params)
 
 

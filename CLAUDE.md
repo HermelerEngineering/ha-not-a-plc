@@ -168,24 +168,23 @@ Per `docs/project-plan.md` §5.
   `Q` in `state_image` so the card colours fb elements (which read Q from state).
   DSL: `fb <name> = <TYPE>` + `@instance`. `R_TRIG`/`F_TRIG` implemented; golden
   `edge_detect`. Card renders fb as a labelled box (card v0.3.0).
-## Next task — timers, then counters/latches (build on `fbs`)
+- **Timers `TON`/`TOF`/`TP` — done (v0.5.0).** Single-input (`IN` = rung power).
+  Instance param `preset_ms`; `_solve_fb` accumulates elapsed from the injected
+  `now` delta (stores `last_ms`/`et`/`q`; requires `now` — the coordinator always
+  passes it, pure tests pass a fake clock). Q only for now; `ET` not yet exposed.
+  Golden `off_delay` (TOF run-on). No card change (renders as the fb box). The
+  golden trace format now supports an optional per-step `now_ms`.
 
-See `docs/project-plan.md` §5 **"Resumption notes — timers, counters, latches"**
-for the concrete plan. In short:
+## Next task — counters/latches (multi-input) + timer ET
 
-- **Do timers `TON`/`TOF`/`TP` first** — single input (`IN` = rung power), so they
-  slot into the existing inline `fb` element. Param `preset_ms`; accumulate elapsed
-  from the injected `now` (require `now` for timers; test with a fake clock). Add a
-  `_solve_fb` branch, extend `KNOWN_FB_TYPES` and the schema `fb` enum, add a golden.
-- **Open decision before counters `CTU`/`CTD` and latches `SR`/`RS`:** they need a
-  second input (reset / set), but the inline `fb` element carries only one. Resolve
-  how extra inputs are supplied — lean to naming them in the instance declaration.
+- **Resolve the multi-input decision first:** counters `CTU`/`CTD` and latches
+  `SR`/`RS` need a second input (reset / set); the inline `fb` element carries only
+  one (the rung power). Lean to naming the extra input(s) in the instance
+  declaration (e.g. `{"type":"CTU","reset":"<tag>","pv":5}`). The card may need a
+  multi-terminal box then.
 - **Timer `ET` (REAL output):** decide how programs read it — lean to exposing
-  `instance.ET` in `state_image` so a `compare` can reference it. Until then ship
-  timers with only boolean `Q`.
-
-The card renders any *single-input* fb as a labelled box already, so timers need no
-card change; multi-input blocks may.
+  `instance.ET` in `state_image` so a `compare` can reference it.
+- See `docs/project-plan.md` §5 **"Resumption notes"** for details.
 
 Carried over (not blocking phase 3):
 

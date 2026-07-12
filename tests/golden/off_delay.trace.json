@@ -1,0 +1,46 @@
+{
+  "steps": [
+    {
+      "note": "presence -> fan on",
+      "now_ms": 0,
+      "inputs": { "presence": true },
+      "outputs": { "fan": true }
+    },
+    {
+      "note": "still present",
+      "now_ms": 500,
+      "inputs": { "presence": true },
+      "outputs": { "fan": true }
+    },
+    {
+      "note": "presence gone -> run-on starts",
+      "now_ms": 1000,
+      "inputs": { "presence": false },
+      "outputs": { "fan": true }
+    },
+    {
+      "note": "run-on 1.0 s",
+      "now_ms": 1500,
+      "inputs": { "presence": false },
+      "outputs": { "fan": true }
+    },
+    {
+      "note": "run-on 1.5 s",
+      "now_ms": 2000,
+      "inputs": { "presence": false },
+      "outputs": { "fan": true }
+    },
+    {
+      "note": "2 s elapsed -> fan off",
+      "now_ms": 2500,
+      "inputs": { "presence": false },
+      "outputs": { "fan": false }
+    },
+    {
+      "note": "stays off",
+      "now_ms": 3000,
+      "inputs": { "presence": false },
+      "outputs": { "fan": false }
+    }
+  ]
+}

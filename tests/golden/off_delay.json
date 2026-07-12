@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "name": "Off delay (run-on)",
+    "description": "TOF (phase 3): the fan follows presence up immediately and runs on for 2 s after presence drops. This is the ventilation run-on case, now as a timer block."
+  },
+  "scan_interval_ms": 500,
+  "tags": {
+    "presence": { "kind": "input", "source": "binary_sensor.presence" },
+    "fan": { "kind": "coil", "type": "BOOL" }
+  },
+  "fbs": {
+    "runon": { "type": "TOF", "preset_ms": 2000 }
+  },
+  "networks": [
+    {
+      "id": "n1",
+      "title": "Fan run-on",
+      "rungs": [
+        {
+          "id": "r1",
+          "title": "fan on, then 2 s run-on",
+          "series": [
+            { "type": "contact", "tag": "presence" },
+            { "type": "fb", "instance": "runon" }
+          ],
+          "coils": [{ "type": "coil", "tag": "fan" }]
+        }
+      ]
+    }
+  ]
+}
