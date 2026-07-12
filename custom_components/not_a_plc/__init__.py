@@ -41,6 +41,11 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR]
 
+# The editor panel's web component ships in the companion card bundle, served by
+# HACS at this path. Kept in sync with the card repo's release filename.
+_PANEL_URL_PATH = "not-a-plc"
+_PANEL_JS_URL = "/hacsfiles/ha-not-a-plc-card/not-a-plc-card.js"
+
 
 def _load_default_program() -> Program:
     """Load the bundled default starter program from disk."""
@@ -98,9 +103,36 @@ def _warn_on_scan_load(hass: HomeAssistant) -> None:
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the read-only status-view websocket commands once per install."""
+    """Register the websocket commands and the editor panel once per install."""
     websocket_api.async_register(hass)
+    await _async_register_panel(hass)
     return True
+
+
+async def _async_register_panel(hass: HomeAssistant) -> None:
+    """Register the Not-a-PLC editor sidebar panel (best-effort).
+
+    Its web component lives in the companion card bundle installed by HACS, so we
+    point at that served URL. Registration never breaks integration setup — the
+    panel is a convenience and the card may not be installed yet.
+    """
+    from homeassistant.components import panel_custom
+
+    if _PANEL_URL_PATH in hass.data.get("frontend_panels", {}):
+        return
+    try:
+        await panel_custom.async_register_panel(
+            hass,
+            frontend_url_path=_PANEL_URL_PATH,
+            webcomponent_name="not-a-plc-panel",
+            module_url=_PANEL_JS_URL,
+            sidebar_title="Not-a-PLC",
+            sidebar_icon="mdi:ladder",
+            require_admin=True,
+            config={},
+        )
+    except Exception as err:  # optional panel — never break integration setup
+        _LOGGER.warning("Could not register the Not-a-PLC editor panel: %s", err)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

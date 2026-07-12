@@ -322,9 +322,12 @@ once the IR-editing pipeline is proven. Lower risk, faster to something usable.
   program is now user-owned/editable. Commands: `not_a_plc/save_program` (IR),
   `not_a_plc/get_program_text` / `save_program_text` (lossless DSL for YAML/git).
   Invalid input is rejected (`invalid_program`). Backend-only, tested in CI.
-- **4.1 — Editor panel scaffold.** Register the full-page panel (frontend repo,
-  reusing render/power-flow); load via `get_program`, a Save button calls
-  `save_program`. Proves the panel ↔ get/save pipeline end to end.
+- **4.1 — Editor panel scaffold — done (int v0.7.3, card v0.3.2).** The integration
+  registers a full-page sidebar panel (`panel_custom`, admin-only, `module_url` →
+  the HACS-served card bundle). The `not-a-plc-panel` element (card repo) reuses
+  render/power-flow: a service selector, a structural program preview, and a **DSL
+  text editor + Save** (`get_program_text`/`save_program_text`). Proves the panel ↔
+  get/save pipeline and is already usable — edit in the UI, no `.storage` fiddling.
 - **4.2 — Tag management.** Create/rebind/remove tags via the native HA entity
   pickers with domain filter + type inference (§3a). A superset of today's options
   flow; independently useful.

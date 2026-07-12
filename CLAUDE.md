@@ -204,8 +204,15 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   `not_a_plc/save_program` (IR; `@async_response`), `not_a_plc/get_program_text` /
   `save_program_text` (lossless DSL, for YAML/git export & import). Invalid programs
   are rejected via `Program.from_dict`/`program_from_text` → `invalid_program` error.
-- **4.1 (next)** editor panel scaffold (get_program → render → Save→save_program).
-- **4.2** tag management via HA pickers (§3a). **4.3** element editing (forms).
+- **4.1 — Editor panel scaffold — done (int v0.7.3, card v0.3.2).** The integration
+  registers a full-page sidebar panel (`_async_register_panel`, best-effort via
+  `panel_custom`, `require_admin`, `module_url` → the HACS-served card bundle
+  `/hacsfiles/ha-not-a-plc-card/not-a-plc-card.js`). The panel element
+  (`not-a-plc-panel` in the card repo, `src/panel.ts`) reuses render/power-flow:
+  service selector, a structural program preview, and a **DSL text editor + Save**
+  (`get_program_text` → edit → `save_program_text`). Already usable — edit in the
+  UI, no `.storage` fiddling. Structured/form editing is 4.2+.
+- **4.2 (next)** tag management via HA pickers (§3a). **4.3** element editing (forms).
 - **4.4** structure + the drag-drop grid canvas. **4.5** validation UX + YAML + polish.
 
 Carried over (fold into phase 4):
