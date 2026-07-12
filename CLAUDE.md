@@ -175,16 +175,20 @@ Per `docs/project-plan.md` §5.
   Golden `off_delay` (TOF run-on). No card change (renders as the fb box). The
   golden trace format now supports an optional per-step `now_ms`.
 
-## Next task — counters/latches (multi-input) + timer ET
+## Next task — counters/latches (multi-input decided) + timer ET
 
-- **Resolve the multi-input decision first:** counters `CTU`/`CTD` and latches
-  `SR`/`RS` need a second input (reset / set); the inline `fb` element carries only
-  one (the rung power). Lean to naming the extra input(s) in the instance
-  declaration (e.g. `{"type":"CTU","reset":"<tag>","pv":5}`). The card may need a
-  multi-terminal box then.
+- **Multi-input decision: made (option A).** A stateful block's primary input is the
+  rung power at its inline `fb`; extra boolean inputs + numeric params are named in
+  the instance declaration as tag references / constants. No multi-terminal element,
+  no card change. Per-block shapes (`CTU`/`CTD`/`SR`/`RS`) and Q formulas are in
+  `docs/project-plan.md` §5 resumption notes (and §9). To implement: extend
+  `KNOWN_FB_TYPES`, add `_solve_fb` branches, the schema `fb` def, and
+  `_validate_references` (referenced tags must exist). DSL param round-trip is
+  already generic. Golden per block. Counter `CV` is a REAL output → surface it the
+  same way as timer `ET`.
 - **Timer `ET` (REAL output):** decide how programs read it — lean to exposing
-  `instance.ET` in `state_image` so a `compare` can reference it.
-- See `docs/project-plan.md` §5 **"Resumption notes"** for details.
+  `instance.ET` in `state_image` so a `compare` can reference it. Same mechanism will
+  serve counter `CV`.
 
 Carried over (not blocking phase 3):
 

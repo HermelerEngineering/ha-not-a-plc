@@ -248,15 +248,27 @@ Suggested order and the one design fork to resolve first:
      `compare` reference `instance.ET`; (b) bind the timer's ET to a declared REAL
      memory tag. Lean to (a). Until then, ship timers with only the boolean `Q`.
 
-2. **Multi-input blocks — counters `CTU`/`CTD` and latches `SR`/`RS` — need one
-   decision first.** These take **two+ inputs** (count + reset; set + reset), but the
-   inline `fb` element only carries one input (the rung power). Resolve how the extra
-   inputs are supplied before implementing:
-   - (A) name the extra inputs in the instance declaration (e.g.
-     `{"type":"CTU","reset":"<tag>","pv":5}`), rung power = the primary input; or
-   - (B) extend the `fb` element to carry named input bindings.
-   Lean to (A) for simplicity. Note `S`/`R` *coils* already give latch behaviour at
-   the rung level; explicit `SR`/`RS` blocks are only for inline use.
+2. **Multi-input blocks — counters `CTU`/`CTD` and latches `SR`/`RS`. Decision
+   made (2026-07-08): option A** — the *primary* input is the rung power reaching
+   the inline `fb` element (as edge/timers already work); *extra* boolean inputs are
+   **named in the instance declaration as tag references**, and numeric parameters
+   are constants there. No multi-terminal element, no card change; a complex
+   secondary condition is computed into a memory bit in an earlier rung and
+   referenced by name. Referenced tags must be declared. Per block:
+   - **CTU:** `{type:CTU, pv:<int>, reset?:"<tag>"}` — CU = rung power (counts
+     rising edges), R = reset tag (dominant), `Q = CV ≥ PV`.
+   - **CTD:** `{type:CTD, pv:<int>, load?:"<tag>"}` — CD = rung power, LD = load tag
+     (loads CV = PV), `Q = CV ≤ 0`.
+   - **SR** (set-dominant): `{type:SR, reset:"<tag>"}` — S = rung power, R = reset
+     tag, `Q = S OR (Q AND NOT R)`.
+   - **RS** (reset-dominant): `{type:RS, reset:"<tag>"}` — S = rung power, R = reset
+     tag, `Q = (S OR Q) AND NOT R`.
+   State: counters keep `cv` + previous count-input edge; latches keep `q`. `CV`
+   (counter value) is a REAL output surfaced the same way as timer `ET` (deferred).
+   Implementation touches `KNOWN_FB_TYPES`, `_solve_fb`, the schema `fb` def, DSL
+   param round-trip (already generic), and `_validate_references` (referenced tags
+   must exist). Note `S`/`R` *coils* already give latch behaviour at the rung level;
+   explicit `SR`/`RS` blocks are only for inline use.
 
 Done when: the ventilation case with a 15-minute run-on (`TOF`) and hysteresis via comparators runs fully as blocks, including the live view.
 
@@ -408,6 +420,11 @@ The exact HACS and brands requirements evolve; verify against the current HACS "
 - **Status-card heartbeat.** Resolved (2026-07-08): the status card shows a small
   top-right dot that toggles green each scan (a liveness indicator), driven by the
   `subscribe_state` push. A near-term card follow-up (see §5 phase 2).
+- **Multi-input function blocks.** Resolved (2026-07-08): a stateful block's primary
+  input is the rung power at its inline `fb` element; extra boolean inputs and
+  numeric parameters are named in the instance declaration (tag references /
+  constants). No multi-terminal element. See §5 resumption notes for the per-block
+  shapes (`CTU`/`CTD`/`SR`/`RS`).
 
 ---
 
