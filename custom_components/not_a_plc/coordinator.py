@@ -66,6 +66,10 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
         self._retained_tags = [
             name for name, tag in program.memory_tags().items() if tag.retain
         ]
+        # The retained snapshot we last scheduled to persist. We only touch disk
+        # when a retained bit actually changes — never once-per-scan — so a steady
+        # program does no disk writes at all after startup.
+        self._saved_retained: dict[str, bool] | None = None
         self._store: Store[dict[str, bool]] = Store(
             hass, STORAGE_VERSION, f"{STORAGE_KEY_PREFIX}.{entry_id}"
         )
@@ -85,6 +89,9 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
         for name in self._retained_tags:
             if name in stored:
                 self._previous[name] = bool(stored[name])
+        # Treat the loaded values as already persisted, so an unchanged program
+        # never rewrites identical state right after startup.
+        self._saved_retained = self._retained_snapshot()
 
     def _retained_snapshot(self) -> dict[str, bool]:
         return {
@@ -94,7 +101,9 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
     async def async_save_retained(self) -> None:
         """Flush retained bits to storage now (called on unload/shutdown)."""
         if self._retained_tags:
-            await self._store.async_save(self._retained_snapshot())
+            snapshot = self._retained_snapshot()
+            self._saved_retained = snapshot
+            await self._store.async_save(snapshot)
 
     # --- Snapshot -----------------------------------------------------------
 
@@ -144,7 +153,11 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
         await self._write_on_change(outputs)
         self._previous = outputs
         if self._retained_tags:
-            self._store.async_delay_save(self._retained_snapshot, RETAIN_SAVE_DELAY)
+            snapshot = self._retained_snapshot()
+            # Only schedule a (debounced) write when a retained bit changed.
+            if snapshot != self._saved_retained:
+                self._saved_retained = snapshot
+                self._store.async_delay_save(self._retained_snapshot, RETAIN_SAVE_DELAY)
         return outputs
 
     async def _write_on_change(self, outputs: dict[str, bool]) -> None:
