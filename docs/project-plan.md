@@ -316,12 +316,12 @@ once the IR-editing pipeline is proven. Lower risk, faster to something usable.
 
 **Sub-phase breakdown (increasing complexity):**
 
-- **4.0 — Backend `save_program` (start here; enables everything).** A websocket
-  command that validates an incoming IR (`Program.from_dict`), writes it to the
-  service's `.storage` program, and reloads the entry. This finally makes the
-  program user-owned/editable (today it is only *seeded* from a bundled starter).
-  Backend-only, fully testable in CI. Optionally expose the lossless DSL text
-  (`program_to_text`/`program_from_text`) over the API for YAML export/import.
+- **4.0 — Backend `save_program` — done (v0.7.2).** `async_apply_program` validates
+  an incoming IR, writes it to the service's `.storage` program (the same key the
+  config flow seeds, so there is one source of truth) and reloads the entry — the
+  program is now user-owned/editable. Commands: `not_a_plc/save_program` (IR),
+  `not_a_plc/get_program_text` / `save_program_text` (lossless DSL for YAML/git).
+  Invalid input is rejected (`invalid_program`). Backend-only, tested in CI.
 - **4.1 — Editor panel scaffold.** Register the full-page panel (frontend repo,
   reusing render/power-flow); load via `get_program`, a Save button calls
   `save_program`. Proves the panel ↔ get/save pipeline end to end.

@@ -8,6 +8,7 @@ pytest-homeassistant-custom-component's lingering-resource teardown check).
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 from typing import Any
 
@@ -20,12 +21,15 @@ from pytest_homeassistant_custom_component.common import (
 )
 
 from custom_components import not_a_plc as integration
-from custom_components.not_a_plc.const import DOMAIN
-from custom_components.not_a_plc.engine import Program
+from custom_components.not_a_plc.const import DATA_COORDINATOR, DOMAIN
+from custom_components.not_a_plc.engine import Program, program_from_text
 from custom_components.not_a_plc.websocket_api import (
+    ERR_INVALID_PROGRAM,
     ERR_NOT_LOADED,
     ws_get_program,
+    ws_get_program_text,
     ws_list_services,
+    ws_save_program,
     ws_subscribe_state,
 )
 
@@ -59,6 +63,7 @@ class FakeConnection:
         self.errors: dict[int, tuple[str, str]] = {}
         self.events: list[Any] = []
         self.subscriptions: dict[int, Any] = {}
+        self.tasks: list[asyncio.Task[Any]] = []
 
     def send_result(self, msg_id: int, result: Any = None) -> None:
         self.results[msg_id] = result
@@ -68,6 +73,16 @@ class FakeConnection:
 
     def send_message(self, message: Any) -> None:
         self.events.append(message)
+
+    def async_create_task(self, target: Any, *_args: Any, **_kwargs: Any) -> Any:
+        # Async command handlers (@async_response) schedule their coroutine here.
+        task = asyncio.ensure_future(target)
+        self.tasks.append(task)
+        return task
+
+    async def async_wait(self) -> None:
+        if self.tasks:
+            await asyncio.gather(*self.tasks)
 
 
 def _use_program(monkeypatch: pytest.MonkeyPatch, data: dict) -> None:
@@ -182,3 +197,80 @@ async def test_list_services_and_entry_id_targeting(
         {"id": 3, "type": "not_a_plc/get_program", "entry_id": "does-not-exist"},
     )
     assert conn3.errors[3][0] == ERR_NOT_LOADED
+
+
+_EDITED_PROGRAM = {
+    "meta": {"name": "Edited"},
+    "tags": {
+        "i": {"kind": "input", "source": "binary_sensor.trigger"},
+        "o": {"kind": "coil"},
+        "m": {"kind": "memory"},
+    },
+    "networks": [
+        {
+            "id": "n",
+            "rungs": [
+                {
+                    "id": "r",
+                    "series": [{"type": "contact", "tag": "i"}],
+                    "coils": [{"type": "coil", "tag": "m", "mode": "S"}],
+                }
+            ],
+        }
+    ],
+}
+
+
+async def test_save_program_replaces_the_running_program(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_program(monkeypatch, _PROGRAM)
+    hass.states.async_set("binary_sensor.trigger", "off")
+    entry = await _setup(hass)
+
+    conn = FakeConnection()
+    ws_save_program(
+        hass,
+        conn,
+        {"id": 7, "type": "not_a_plc/save_program", "program": _EDITED_PROGRAM},
+    )
+    await conn.async_wait()
+    await hass.async_block_till_done()
+
+    assert 7 in conn.results
+    # The service reloaded and re-read the new program from .storage.
+    coordinator = hass.data[DOMAIN][entry.entry_id][DATA_COORDINATOR]
+    assert coordinator.program.meta["name"] == "Edited"
+    assert "m" in coordinator.program.memory_tags()
+
+
+async def test_save_program_rejects_an_invalid_program(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_program(monkeypatch, _PROGRAM)
+    hass.states.async_set("binary_sensor.trigger", "off")
+    await _setup(hass)
+
+    conn = FakeConnection()
+    bad = {"tags": {"x": {"kind": "weird"}}, "networks": []}
+    ws_save_program(
+        hass, conn, {"id": 8, "type": "not_a_plc/save_program", "program": bad}
+    )
+    await conn.async_wait()
+
+    assert conn.errors[8][0] == ERR_INVALID_PROGRAM
+    assert 8 not in conn.results
+
+
+async def test_get_program_text_round_trips(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_program(monkeypatch, _PROGRAM)
+    hass.states.async_set("binary_sensor.trigger", "off")
+    await _setup(hass)
+
+    conn = FakeConnection()
+    ws_get_program_text(hass, conn, {"id": 9, "type": "not_a_plc/get_program_text"})
+    text = conn.results[9]["text"]
+    again = program_from_text(text)
+    assert again.to_dict()["tags"]["i"]["kind"] == "input"

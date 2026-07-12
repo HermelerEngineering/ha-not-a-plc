@@ -198,12 +198,13 @@ Interaction model **decided: structured first, then drag** (form/menu editor tha
 writes the IR; the drag-drop canvas is built on top later). Full breakdown in
 `docs/project-plan.md` §5 phase 4. Sub-phases:
 
-- **4.0 — Backend `save_program` (start here).** A websocket command that validates
-  an incoming IR (`Program.from_dict`), writes it to the service's `.storage`
-  program, and reloads the entry — finally making the program user-editable (today
-  only *seeded*). Backend-only, CI-testable. Optionally expose the DSL text
-  (`program_to_text`/`from_text`) for YAML export/import.
-- **4.1** editor panel scaffold (get_program → render → Save→save_program).
+- **4.0 — Backend `save_program` — done (v0.7.2).** `websocket_api.async_apply_program`
+  writes a validated program to the service's `.storage` and reloads it (so the
+  editor and the seeded starter share one canonical store). Commands:
+  `not_a_plc/save_program` (IR; `@async_response`), `not_a_plc/get_program_text` /
+  `save_program_text` (lossless DSL, for YAML/git export & import). Invalid programs
+  are rejected via `Program.from_dict`/`program_from_text` → `invalid_program` error.
+- **4.1 (next)** editor panel scaffold (get_program → render → Save→save_program).
 - **4.2** tag management via HA pickers (§3a). **4.3** element editing (forms).
 - **4.4** structure + the drag-drop grid canvas. **4.5** validation UX + YAML + polish.
 

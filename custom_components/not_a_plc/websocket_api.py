@@ -1,12 +1,19 @@
-"""Websocket API: the bridge between the engine and the frontend status view.
+"""Websocket API: the bridge between the engine and the frontend.
 
-Phase 2/2A read-only commands, consumed by the Lovelace monitor card:
+Read-only status-view commands (phase 2/2A), consumed by the monitor card:
 
 * ``not_a_plc/list_services`` — the running services (``entry_id`` + name) so the
   card can offer a service selector.
 * ``not_a_plc/get_program`` — the canonical IR of one service, to draw the rungs.
 * ``not_a_plc/subscribe_state`` — the process image of one service, pushed on each
   actual change (see the change-detection note below).
+
+Editing commands (phase 4.0), so a program becomes user-owned:
+
+* ``not_a_plc/save_program`` — validate an incoming IR and make it the service's
+  canonical ``.storage`` program, then reload the service.
+* ``not_a_plc/get_program_text`` / ``not_a_plc/save_program_text`` — the same via
+  the lossless text DSL (for YAML/git export & import).
 
 Each command optionally takes an ``entry_id`` to target a specific service. When
 omitted, the first running service is used (handy with a single instance).
@@ -19,11 +26,19 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.storage import Store
 
-from .const import DATA_COORDINATOR, DOMAIN
+from .const import (
+    DATA_COORDINATOR,
+    DOMAIN,
+    STORAGE_PROGRAM_PREFIX,
+    STORAGE_VERSION,
+)
 from .coordinator import LadderCoordinator
+from .engine import Program, ProgramError, program_from_text, program_to_text
 
 ERR_NOT_LOADED = "not_loaded"
+ERR_INVALID_PROGRAM = "invalid_program"
 
 
 @callback
@@ -32,6 +47,34 @@ def async_register(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_list_services)
     websocket_api.async_register_command(hass, ws_get_program)
     websocket_api.async_register_command(hass, ws_subscribe_state)
+    websocket_api.async_register_command(hass, ws_save_program)
+    websocket_api.async_register_command(hass, ws_get_program_text)
+    websocket_api.async_register_command(hass, ws_save_program_text)
+
+
+def _resolve_entry_id(hass: HomeAssistant, entry_id: str | None = None) -> str | None:
+    """Return a running service's entry_id (the given one, or the first)."""
+    entries = hass.data.get(DOMAIN)
+    if not entries:
+        return None
+    if entry_id is not None:
+        return entry_id if entry_id in entries else None
+    return next(iter(entries), None)
+
+
+async def async_apply_program(
+    hass: HomeAssistant, entry_id: str, program: Program
+) -> None:
+    """Persist a validated program as a service's canonical program and reload it.
+
+    Writing to the same ``.storage`` key the config flow seeds means the editor and
+    the seeded starter share one source of truth; the reload re-reads it.
+    """
+    store: Store[dict[str, Any]] = Store(
+        hass, STORAGE_VERSION, f"{STORAGE_PROGRAM_PREFIX}.{entry_id}"
+    )
+    await store.async_save(program.to_dict())
+    await hass.config_entries.async_reload(entry_id)
 
 
 def _get_coordinator(
@@ -136,3 +179,77 @@ def ws_subscribe_state(
     connection.subscriptions[msg["id"]] = coordinator.async_add_listener(forward_state)
     connection.send_result(msg["id"])
     forward_state()
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "not_a_plc/save_program",
+        vol.Optional("entry_id"): str,
+        vol.Required("program"): dict,
+    }
+)
+@websocket_api.async_response
+async def ws_save_program(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Validate an incoming IR and make it the service's canonical program."""
+    entry_id = _resolve_entry_id(hass, msg.get("entry_id"))
+    if entry_id is None:
+        connection.send_error(msg["id"], ERR_NOT_LOADED, "Not-a-PLC is not set up")
+        return
+    try:
+        program = Program.from_dict(msg["program"])
+    except ProgramError as err:
+        connection.send_error(msg["id"], ERR_INVALID_PROGRAM, str(err))
+        return
+    await async_apply_program(hass, entry_id, program)
+    connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "not_a_plc/get_program_text",
+        vol.Optional("entry_id"): str,
+    }
+)
+@callback
+def ws_get_program_text(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Return the service's program as lossless DSL text (for YAML/git export)."""
+    coordinator = _get_coordinator(hass, msg.get("entry_id"))
+    if coordinator is None:
+        connection.send_error(msg["id"], ERR_NOT_LOADED, "Not-a-PLC is not set up")
+        return
+    connection.send_result(msg["id"], {"text": program_to_text(coordinator.program)})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "not_a_plc/save_program_text",
+        vol.Optional("entry_id"): str,
+        vol.Required("text"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_save_program_text(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Parse DSL text into a program and make it the service's canonical program."""
+    entry_id = _resolve_entry_id(hass, msg.get("entry_id"))
+    if entry_id is None:
+        connection.send_error(msg["id"], ERR_NOT_LOADED, "Not-a-PLC is not set up")
+        return
+    try:
+        program = program_from_text(msg["text"])
+    except ProgramError as err:
+        connection.send_error(msg["id"], ERR_INVALID_PROGRAM, str(err))
+        return
+    await async_apply_program(hass, entry_id, program)
+    connection.send_result(msg["id"])
