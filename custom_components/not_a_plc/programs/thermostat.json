@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "name": "Thermostat",
+    "description": "Temperature hysteresis using REAL comparators: below 19 the heat call latches on, above 21 it latches off. Bind 'temp' to your temperature sensor via the service options."
+  },
+  "scan_interval_ms": 1000,
+  "tags": {
+    "temp": {
+      "kind": "input",
+      "source": "sensor.temperature",
+      "type": "REAL",
+      "on_unavailable": "hold"
+    },
+    "call": { "kind": "memory", "retain": false },
+    "heat": { "kind": "coil", "type": "BOOL" }
+  },
+  "networks": [
+    {
+      "id": "n1",
+      "title": "Hysteresis",
+      "rungs": [
+        {
+          "id": "r1",
+          "title": "below low -> set",
+          "series": [{ "type": "compare", "op": "LT", "left": "temp", "right": 19.0 }],
+          "coils": [{ "type": "coil", "tag": "call", "mode": "S" }]
+        },
+        {
+          "id": "r2",
+          "title": "above high -> reset",
+          "series": [{ "type": "compare", "op": "GT", "left": "temp", "right": 21.0 }],
+          "coils": [{ "type": "coil", "tag": "call", "mode": "R" }]
+        },
+        {
+          "id": "r3",
+          "title": "drive heat",
+          "series": [{ "type": "contact", "tag": "call" }],
+          "coils": [{ "type": "coil", "tag": "heat" }]
+        }
+      ]
+    }
+  ]
+}

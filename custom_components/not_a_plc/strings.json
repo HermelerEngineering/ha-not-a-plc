@@ -11,5 +11,22 @@
         }
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Not a PLC service options",
+        "description": "Bind each program input to a Home Assistant entity and set how often the program scans.",
+        "data": {
+          "scan_interval_ms": "Scan interval"
+        }
+      }
+    },
+    "abort": {
+      "not_loaded": "This Not a PLC service is not running."
+    },
+    "error": {
+      "invalid_program": "Those bindings produced an invalid program."
+    }
   }
 }

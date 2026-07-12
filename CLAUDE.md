@@ -152,6 +152,12 @@ Per `docs/project-plan.md` §5.
   (`_eval_compare`; missing/non-numeric operand does not conduct), the DSL
   (`[ left OP right ]`, lossless), the JSON schema, and the card (render box +
   `compareConducts`). Golden: `analog_hysteresis` (REAL compares → S/R → coil).
+- **Comparators usable via UI — done (v0.3.0).** A `thermostat` bundled starter
+  (comparator hysteresis) plus an **options flow** (`LadderOptionsFlow`) that
+  rebinds each `input` tag to an entity (REAL → numeric domains) and sets the scan
+  interval, writing the updated program back to that service's `.storage` program
+  and reloading (entry update listener). This is the stopgap authoring path until
+  the phase-4 editor; it does not add/remove logic, only rebinds inputs + interval.
 - **Remaining (need the `fbs` state-instance machinery):** edge detect
   (`R_TRIG`/`F_TRIG`), timers (`TON`/`TOF`/`TP`, counting on the injected clock
   delta), counters (`CTU`/`CTD`), `SR`/`RS`. Function blocks carry state → a

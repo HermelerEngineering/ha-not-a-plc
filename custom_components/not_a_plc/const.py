@@ -16,6 +16,7 @@ DEFAULT_PROGRAM_FILE = "demo.json"
 BUNDLED_PROGRAMS: dict[str, tuple[str, str]] = {
     "daylight": ("Daylight demo (coil follows the sun)", "demo.json"),
     "render": ("Render demo (parallel branch + NC)", "render_demo.json"),
+    "thermostat": ("Thermostat (temperature hysteresis)", "thermostat.json"),
 }
 DEFAULT_STARTER = "daylight"
 
