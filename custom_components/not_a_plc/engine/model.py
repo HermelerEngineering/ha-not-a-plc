@@ -28,10 +28,14 @@ TagKind = Literal["input", "coil", "memory"]
 TagType = Literal["BOOL", "REAL", "TIME"]
 ContactMode = Literal["NO", "NC"]
 CoilMode = Literal["=", "S", "R"]
+CompareOp = Literal["GT", "GE", "LT", "LE", "EQ", "NE"]
 UnavailablePolicy = Literal["false", "hold"]
 
 # Coil modes that the evaluator actually implements.
 IMPLEMENTED_COIL_MODES: frozenset[str] = frozenset({"=", "S", "R"})
+
+# Comparison operators the evaluator implements (phase 3).
+COMPARE_OPS: frozenset[str] = frozenset({"GT", "GE", "LT", "LE", "EQ", "NE"})
 
 
 # --- Helpers ----------------------------------------------------------------
@@ -189,7 +193,47 @@ class Not:
         return {"not": [el.to_dict() for el in self.inner]}
 
 
-Element = Contact | Branch | Not
+@dataclass(slots=True)
+class Compare:
+    """A comparison element: conducts when ``left <op> right`` holds.
+
+    ``left`` is always a REAL tag; ``right`` is either a numeric constant or the
+    name of another REAL tag. Stateless — it behaves like a contact in a series.
+    """
+
+    op: CompareOp
+    left: str
+    right: float | int | str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "compare",
+            "op": self.op,
+            "left": self.left,
+            "right": self.right,
+        }
+
+
+Element = Contact | Branch | Not | Compare
+
+
+def _compare_from_dict(data: dict[str, Any], where: str) -> Compare:
+    op = _get(data, "op", where)
+    _require(op in COMPARE_OPS, f"{where}: invalid compare op '{op}'")
+    left = _get(data, "left", where)
+    _require(
+        isinstance(left, str) and left, f"{where}: compare 'left' must be a tag name"
+    )
+    _require("right" in data, f"{where}: missing required key 'right'")
+    right = data["right"]
+    # bool is a subclass of int, so exclude it explicitly.
+    _require(
+        isinstance(right, (int, float, str)) and not isinstance(right, bool),
+        f"{where}: compare 'right' must be a number or a tag name",
+    )
+    if isinstance(right, str):
+        _require(right != "", f"{where}: compare 'right' tag name must be non-empty")
+    return Compare(op=op, left=left, right=right)
 
 
 def _element_from_dict(data: dict[str, Any], where: str) -> Element:
@@ -225,6 +269,9 @@ def _element_from_dict(data: dict[str, Any], where: str) -> Element:
                 ]
             )
         return Branch(paths=paths)
+
+    if data.get("type") == "compare":
+        return _compare_from_dict(data, where)
 
     _require(
         data.get("type") == "contact",
@@ -379,12 +426,23 @@ class Program:
         """Every tag referenced by a contact or coil must be declared."""
         known = set(self.tags)
 
+        def check_real(tag: str, where: str) -> None:
+            _require(tag in known, f"{where}: compare references unknown tag '{tag}'")
+            _require(
+                self.tags[tag].type == "REAL",
+                f"{where}: compare tag '{tag}' must be REAL",
+            )
+
         def check_element(el: Element, where: str) -> None:
             if isinstance(el, Contact):
                 _require(
                     el.tag in known,
                     f"{where}: contact references unknown tag '{el.tag}'",
                 )
+            elif isinstance(el, Compare):
+                check_real(el.left, where)
+                if isinstance(el.right, str):
+                    check_real(el.right, where)
             elif isinstance(el, Not):
                 for i, sub in enumerate(el.inner):
                     check_element(sub, f"{where}.not[{i}]")

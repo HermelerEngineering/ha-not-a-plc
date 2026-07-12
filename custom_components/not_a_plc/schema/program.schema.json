@@ -61,9 +61,21 @@
     "element": {
       "oneOf": [
         { "$ref": "#/$defs/contact" },
+        { "$ref": "#/$defs/compare" },
         { "$ref": "#/$defs/branch" },
         { "$ref": "#/$defs/negation" }
       ]
+    },
+    "compare": {
+      "type": "object",
+      "required": ["type", "op", "left", "right"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "compare" },
+        "op": { "enum": ["GT", "GE", "LT", "LE", "EQ", "NE"] },
+        "left": { "type": "string" },
+        "right": { "type": ["number", "string"] }
+      }
     },
     "negation": {
       "type": "object",

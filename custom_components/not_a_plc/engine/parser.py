@@ -32,14 +32,21 @@ import re
 from typing import Any
 
 from .errors import ProgramError
-from .model import Contact, Not, Program
+from .model import Compare, Contact, Not, Program
 
 # Words that introduce a statement and therefore cannot be used as tag names.
 _RESERVED = frozenset({"meta", "scan_interval_ms", "tag", "network", "rung", "NOT"})
 
 _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
-_TOKEN_RE = re.compile(r"\s*(NOT\b|[()|!]|[A-Za-z_][A-Za-z0-9_]*)")
+_NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?\Z")
+_TOKEN_RE = re.compile(
+    r"\s*(NOT\b|>=|<=|==|!=|-?\d+(?:\.\d+)?|[()\[\]|!<>]|[A-Za-z_][A-Za-z0-9_]*)"
+)
 _COIL_RE = re.compile(r"\(\s*([=SR])\s+([A-Za-z_][A-Za-z0-9_]*)\s*\)")
+
+# Comparison operator symbol <-> IR op name.
+_OP_TO_SYM = {"GT": ">", "GE": ">=", "LT": "<", "LE": "<=", "EQ": "==", "NE": "!="}
+_SYM_TO_OP = {sym: op for op, sym in _OP_TO_SYM.items()}
 
 
 # --------------------------------------------------------------------------- #
@@ -56,9 +63,20 @@ def _ident(name: str, what: str) -> str:
     return name
 
 
+def _operand_to_text(value: float | int | str) -> str:
+    if isinstance(value, str):
+        return _ident(value, "compare tag")
+    if isinstance(value, float):
+        return repr(value)
+    return str(value)  # int
+
+
 def _element_to_text(el: Any) -> str:
     if isinstance(el, Contact):
         return ("!" if el.mode == "NC" else "") + _ident(el.tag, "tag")
+    if isinstance(el, Compare):
+        left = _ident(el.left, "compare tag")
+        return f"[ {left} {_OP_TO_SYM[el.op]} {_operand_to_text(el.right)} ]"
     if isinstance(el, Not):
         return f"NOT( {_series_to_text(el.inner)} )"
     # Branch
@@ -155,6 +173,14 @@ def _expect(tokens: list[str], pos: int, tok: str) -> int:
     return pos + 1
 
 
+def _parse_operand(tok: str) -> float | int | str:
+    if _NUMBER_RE.match(tok):
+        return float(tok) if "." in tok else int(tok)
+    if _IDENT_RE.match(tok):
+        return tok
+    raise ProgramError(f"DSL: invalid compare operand '{tok}'")
+
+
 def _parse_element(tokens: list[str], pos: int) -> tuple[dict[str, Any], int]:
     tok = tokens[pos]
     if tok == "!":
@@ -162,6 +188,21 @@ def _parse_element(tokens: list[str], pos: int) -> tuple[dict[str, Any], int]:
         if pos >= len(tokens) or not _IDENT_RE.match(tokens[pos]):
             raise ProgramError("DSL: '!' must be followed by a tag name")
         return {"type": "contact", "tag": tokens[pos], "mode": "NC"}, pos + 1
+    if tok == "[":
+        pos += 1
+        if pos >= len(tokens) or not _IDENT_RE.match(tokens[pos]):
+            raise ProgramError("DSL: compare '[' must be followed by a tag name")
+        left = tokens[pos]
+        pos += 1
+        if pos >= len(tokens) or tokens[pos] not in _SYM_TO_OP:
+            raise ProgramError("DSL: compare needs an operator (>, >=, <, <=, ==, !=)")
+        op = _SYM_TO_OP[tokens[pos]]
+        pos += 1
+        if pos >= len(tokens):
+            raise ProgramError("DSL: compare is missing its right operand")
+        right = _parse_operand(tokens[pos])
+        pos = _expect(tokens, pos + 1, "]")
+        return {"type": "compare", "op": op, "left": left, "right": right}, pos
     if tok == "NOT":
         pos = _expect(tokens, pos + 1, "(")
         inner, pos = _parse_series(tokens, pos)

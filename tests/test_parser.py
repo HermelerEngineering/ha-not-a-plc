@@ -29,6 +29,9 @@ def _feature_program() -> Program:
                 "b": {"kind": "input", "source": "binary_sensor.b"},
                 "m": {"kind": "memory", "retain": True},
                 "out": {"kind": "coil", "writes": {"target": "switch.out"}},
+                "temp": {"kind": "input", "source": "sensor.temp", "type": "REAL"},
+                "sp": {"kind": "input", "source": "sensor.sp", "type": "REAL"},
+                "hot": {"kind": "coil"},
             },
             "networks": [
                 {
@@ -67,6 +70,31 @@ def _feature_program() -> Program:
                             "id": "r3",
                             "series": [{"type": "contact", "tag": "m"}],
                             "coils": [{"type": "coil", "tag": "out"}],
+                        },
+                        {
+                            "id": "r4",
+                            "title": "comparators",
+                            "series": [
+                                {
+                                    "type": "compare",
+                                    "op": "GT",
+                                    "left": "temp",
+                                    "right": 21,
+                                },
+                                {
+                                    "type": "compare",
+                                    "op": "LT",
+                                    "left": "temp",
+                                    "right": 25.5,
+                                },
+                                {
+                                    "type": "compare",
+                                    "op": "GE",
+                                    "left": "temp",
+                                    "right": "sp",
+                                },
+                            ],
+                            "coils": [{"type": "coil", "tag": "hot"}],
                         },
                     ],
                 }

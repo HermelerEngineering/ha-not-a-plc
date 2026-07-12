@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "name": "Analog hysteresis",
+    "description": "Real REAL comparators (phase 3): temperature below 19 sets a call latch, above 21 resets it; the latch drives the heat coil. Replaces the phase-1 workaround of feeding two BOOL threshold sensors."
+  },
+  "scan_interval_ms": 500,
+  "tags": {
+    "temp": { "kind": "input", "source": "sensor.temperature", "type": "REAL" },
+    "call": { "kind": "memory", "retain": false },
+    "heat": { "kind": "coil", "type": "BOOL" }
+  },
+  "networks": [
+    {
+      "id": "n1",
+      "title": "Hysteresis",
+      "rungs": [
+        {
+          "id": "r1",
+          "title": "below low -> set",
+          "series": [{ "type": "compare", "op": "LT", "left": "temp", "right": 19.0 }],
+          "coils": [{ "type": "coil", "tag": "call", "mode": "S" }]
+        },
+        {
+          "id": "r2",
+          "title": "above high -> reset",
+          "series": [{ "type": "compare", "op": "GT", "left": "temp", "right": 21.0 }],
+          "coils": [{ "type": "coil", "tag": "call", "mode": "R" }]
+        },
+        {
+          "id": "r3",
+          "title": "drive heat",
+          "series": [{ "type": "contact", "tag": "call" }],
+          "coils": [{ "type": "coil", "tag": "heat" }]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "steps": [
+    {
+      "note": "warm, in band -> no call",
+      "inputs": { "temp": 20.0 },
+      "outputs": { "call": false, "heat": false }
+    },
+    {
+      "note": "below low -> set the call latch",
+      "inputs": { "temp": 18.5 },
+      "outputs": { "call": true, "heat": true }
+    },
+    {
+      "note": "back in band -> latch holds on",
+      "inputs": { "temp": 20.0 },
+      "outputs": { "call": true, "heat": true }
+    },
+    {
+      "note": "above high -> reset the latch",
+      "inputs": { "temp": 21.5 },
+      "outputs": { "call": false, "heat": false }
+    },
+    {
+      "note": "in band -> latch holds off",
+      "inputs": { "temp": 20.0 },
+      "outputs": { "call": false, "heat": false }
+    },
+    {
+      "note": "below low -> set again",
+      "inputs": { "temp": 18.0 },
+      "outputs": { "call": true, "heat": true }
+    }
+  ]
+}

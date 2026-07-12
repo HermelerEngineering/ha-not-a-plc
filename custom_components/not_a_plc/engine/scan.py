@@ -16,17 +16,29 @@ groups, and coils ``=`` / ``S`` / ``R``.
 
 from __future__ import annotations
 
+import operator
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
 from .errors import ProgramError
 from .model import (
     IMPLEMENTED_COIL_MODES,
+    Compare,
     Contact,
     Element,
     Not,
     Program,
 )
+
+_COMPARATORS: dict[str, Callable[[float, float], bool]] = {
+    "GT": operator.gt,
+    "GE": operator.ge,
+    "LT": operator.lt,
+    "LE": operator.le,
+    "EQ": operator.eq,
+    "NE": operator.ne,
+}
 
 
 def _truthy(value: Any) -> bool:
@@ -44,10 +56,33 @@ def _truthy(value: Any) -> bool:
     return bool(value)
 
 
+def _as_number(value: Any) -> float | None:
+    """Coerce a process-image value to float, or None if it is not numeric."""
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
+def _eval_compare(cmp: Compare, image: dict[str, Any]) -> bool:
+    """``left <op> right``. A missing/non-numeric operand does not conduct."""
+    left = _as_number(image.get(cmp.left))
+    if isinstance(cmp.right, str):
+        right = _as_number(image.get(cmp.right))
+    else:
+        right = float(cmp.right)
+    if left is None or right is None:
+        return False
+    return _COMPARATORS[cmp.op](left, right)
+
+
 def _eval_element(element: Element, image: dict[str, Any]) -> bool:
     if isinstance(element, Contact):
         state = _truthy(image.get(element.tag, False))
         return (not state) if element.mode == "NC" else state
+    if isinstance(element, Compare):
+        return _eval_compare(element, image)
     if isinstance(element, Not):
         return not _eval_series(element.inner, image)
     # Branch: OR of its series paths.
