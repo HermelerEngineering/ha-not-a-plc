@@ -309,6 +309,31 @@ card. The read-only status card stays exactly as it is, alongside the editor.
 - Validation: dangling wires, unbound tags, warning on multiply-written coils.
 - Save via `save_program` (canonical JSON in `.storage`); export to YAML for git.
 
+**Interaction model — decided (2026-07-08): structured first, then drag.** Ship a
+form/menu-driven editor first (add elements via buttons/dropdowns, tags via HA
+pickers) that writes the IR; build the drag-drop grid canvas (4.4) on top of that
+once the IR-editing pipeline is proven. Lower risk, faster to something usable.
+
+**Sub-phase breakdown (increasing complexity):**
+
+- **4.0 — Backend `save_program` (start here; enables everything).** A websocket
+  command that validates an incoming IR (`Program.from_dict`), writes it to the
+  service's `.storage` program, and reloads the entry. This finally makes the
+  program user-owned/editable (today it is only *seeded* from a bundled starter).
+  Backend-only, fully testable in CI. Optionally expose the lossless DSL text
+  (`program_to_text`/`program_from_text`) over the API for YAML export/import.
+- **4.1 — Editor panel scaffold.** Register the full-page panel (frontend repo,
+  reusing render/power-flow); load via `get_program`, a Save button calls
+  `save_program`. Proves the panel ↔ get/save pipeline end to end.
+- **4.2 — Tag management.** Create/rebind/remove tags via the native HA entity
+  pickers with domain filter + type inference (§3a). A superset of today's options
+  flow; independently useful.
+- **4.3 — Element editing.** Add/edit/remove elements in a rung (contacts, coils,
+  comparators, fb references) via the palette/forms.
+- **4.4 — Structure + the drag-drop canvas.** Add/remove/reorder rungs and networks;
+  group parallel branches and `NOT`; the grid work area with a draggable toolbar.
+- **4.5 — Validation UX, YAML export, polish.**
+
 Done when: you build a complete network graphically, save it, and it runs without a
 line of hand-written YAML.
 

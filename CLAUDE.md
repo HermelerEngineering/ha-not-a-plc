@@ -192,21 +192,25 @@ schema and card, each with a golden. No card change was needed beyond the fb box
   via the v0.6.0 mechanism. Validation: `pv` positive int; latch needs `reset`;
   referenced tags must exist. Goldens `sr_latch`, `count_up`. No card change.
 
-## Next task — Phase 4 (graphical editor)
+## Next task — Phase 4 (graphical editor), decomposed
 
-The big one: build programs by dragging, serialising to the same IR the engine
-runs. See `docs/project-plan.md` §5 phase 4 + §3a. It reuses the card's
-render/power-flow layer as a full-page HA **panel** (menu item, ESPHome-Builder
-style) in the frontend repo; the read-only card stays. This also finally makes the
-program **user-editable** (canonical in `.storage`, where the config flow already
-seeds it) — the biggest carried-over item below.
+Interaction model **decided: structured first, then drag** (form/menu editor that
+writes the IR; the drag-drop canvas is built on top later). Full breakdown in
+`docs/project-plan.md` §5 phase 4. Sub-phases:
 
-Carried over (candidates to fold into phase 4 or do alongside):
+- **4.0 — Backend `save_program` (start here).** A websocket command that validates
+  an incoming IR (`Program.from_dict`), writes it to the service's `.storage`
+  program, and reloads the entry — finally making the program user-editable (today
+  only *seeded*). Backend-only, CI-testable. Optionally expose the DSL text
+  (`program_to_text`/`from_text`) for YAML export/import.
+- **4.1** editor panel scaffold (get_program → render → Save→save_program).
+- **4.2** tag management via HA pickers (§3a). **4.3** element editing (forms).
+- **4.4** structure + the drag-drop grid canvas. **4.5** validation UX + YAML + polish.
 
-- **User-editable program** in `.storage` is the crux of phase 4 (today the program
-  is only *seeded* from bundled starters; the options flow rebinds inputs only).
-  Lossless YAML export for git is part of this.
-- The `temp` tag kind (§9) is not in `engine/model.py` yet.
+Carried over (fold into phase 4):
+
+- The `temp` tag kind (§9) is not in `engine/model.py` yet — add when tag management
+  (4.2) lands.
 - A commandable `switch` coil variant for commissioning is still optional.
 
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
