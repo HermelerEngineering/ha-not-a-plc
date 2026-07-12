@@ -1,4 +1,4 @@
-"""The Not a PLC integration: a native, cyclic ladder-style logic engine.
+"""The Not-a-PLC integration: a native, cyclic ladder-style logic engine.
 
 Each config entry is one independent "service": its own device, program,
 entities and scan loop. A service owns its program canonically in ``.storage``
@@ -91,7 +91,7 @@ def _warn_on_scan_load(hass: HomeAssistant) -> None:
     count = len(hass.data.get(DOMAIN, {}))
     if count >= SERVICE_SOFT_CAP:
         _LOGGER.warning(
-            "There are now %d Not a PLC services running; each adds a scan loop. "
+            "There are now %d Not-a-PLC services running; each adds a scan loop. "
             "Consider slower scan intervals if Home Assistant feels loaded.",
             count,
         )
@@ -104,7 +104,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up one Not a PLC service from a config entry."""
+    """Set up one Not-a-PLC service from a config entry."""
     try:
         program = await _async_load_program(hass, entry)
     except (OSError, ProgramError, ValueError) as err:

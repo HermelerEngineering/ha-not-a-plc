@@ -230,11 +230,13 @@ Carried over (fold into phase 4):
 
 ## Open decisions (do not silently pick)
 
-- **Name.** Decided (2026-07-07): product name **"Not a PLC"**, domain `not_a_plc`,
-  entity prefix `not_a_plc_`. "Ladder" is kept only as the term for the logic
-  *paradigm* (ladder logic, rungs, coils) and in internal `Ladder*` class names —
-  it is not the product name. The outer repo folder is still `ha-ladder` (rename
-  to `ha-not-a-plc` on the git remote when convenient).
+- **Name.** Decided (2026-07-07); display name updated (2026-07-08). The
+  user-visible product name is **"Not-a-PLC"** (hyphenated) everywhere it shows in
+  HA and HACS (manifest/hacs.json `name`, config-flow title/default, device
+  manufacturer, card name + default header, READMEs). The domain stays `not_a_plc`
+  and the entity prefix `not_a_plc_`. The lowercase **"not a PLC"** (spaced) is the
+  disclaimer/paradigm phrase and is left as-is. "Ladder" is only the logic paradigm
+  term and internal `Ladder*` class names.
 - **Coil actuation.** Current model: coil publishes as `binary_sensor` + optional
   `writes` executor. A commandable `switch` variant for commissioning is optional.
 - **Canonical storage.** Plan leans to JSON in `.storage` as source of truth with

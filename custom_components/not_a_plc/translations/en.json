@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add a Not a PLC service",
+        "title": "Add a Not-a-PLC service",
         "description": "Each service runs its own program on its own scan loop. Name it, pick a starter program and choose how often it scans. You can add more services later and edit the program in a future update.",
         "data": {
           "name": "Service name",
@@ -15,7 +15,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Not a PLC service options",
+        "title": "Not-a-PLC service options",
         "description": "Bind each program input to a Home Assistant entity and set how often the program scans.",
         "data": {
           "scan_interval_ms": "Scan interval"
@@ -23,7 +23,7 @@
       }
     },
     "abort": {
-      "not_loaded": "This Not a PLC service is not running."
+      "not_loaded": "This Not-a-PLC service is not running."
     },
     "error": {
       "invalid_program": "Those bindings produced an invalid program."

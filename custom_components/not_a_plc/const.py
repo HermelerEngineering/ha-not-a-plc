@@ -1,4 +1,4 @@
-"""Constants for the Not a PLC integration."""
+"""Constants for the Not-a-PLC integration."""
 
 from __future__ import annotations
 

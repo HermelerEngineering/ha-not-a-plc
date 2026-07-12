@@ -4,7 +4,7 @@ Each coil/memory tag becomes a ``binary_sensor`` mirroring the logical truth of
 that tag after every scan. Actuation of real devices (for coils with a ``writes``
 binding) happens in the coordinator; this platform is the state mirror.
 
-All bits are grouped under one "Not a PLC" service device, so entity_ids are
+All bits are grouped under one "Not-a-PLC" service device, so entity_ids are
 predictable (e.g. ``binary_sensor.not_a_plc_daylight``).
 """
 
@@ -57,7 +57,7 @@ class LadderBitSensor(CoordinatorEntity[LadderCoordinator], BinarySensorEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry_id)},
             name=service_name,
-            manufacturer="Not a PLC",
+            manufacturer="Not-a-PLC",
             entry_type=DeviceEntryType.SERVICE,
         )
 

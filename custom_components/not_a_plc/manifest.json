@@ -1,6 +1,6 @@
 {
   "domain": "not_a_plc",
-  "name": "Not a PLC",
+  "name": "Not-a-PLC",
   "codeowners": ["@HermelerEngineering"],
   "config_flow": true,
   "documentation": "https://github.com/HermelerEngineering/ha-not-a-plc",
@@ -8,5 +8,5 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/HermelerEngineering/ha-not-a-plc/issues",
   "requirements": [],
-  "version": "0.7.0"
+  "version": "0.7.1"
 }

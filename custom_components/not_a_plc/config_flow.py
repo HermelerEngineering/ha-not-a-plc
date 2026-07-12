@@ -1,4 +1,4 @@
-"""Config + options flow for Not a PLC.
+"""Config + options flow for Not-a-PLC.
 
 Each run of the *config* flow creates one independent *service* (its own device,
 program, entities and scan loop) — there is no single-instance limit. The user
@@ -57,7 +57,7 @@ def _interval_selector() -> selector.SelectSelector:
 
 
 class LadderConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Not a PLC."""
+    """Handle a config flow for Not-a-PLC."""
 
     VERSION = 1
 
@@ -81,7 +81,7 @@ class LadderConfigFlow(ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Required("name", default="Not a PLC"): selector.TextSelector(),
+                vol.Required("name", default="Not-a-PLC"): selector.TextSelector(),
                 vol.Required(
                     CONF_STARTER, default=DEFAULT_STARTER
                 ): selector.SelectSelector(

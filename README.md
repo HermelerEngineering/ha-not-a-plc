@@ -1,4 +1,4 @@
-# Not a PLC — a cyclic ladder-style logic engine for Home Assistant
+# Not-a-PLC — a cyclic ladder-style logic engine for Home Assistant
 
 A native Home Assistant custom integration that runs a **cyclic logic engine**:
 on a fixed cycle (default 500 ms) it reads a set of HA entities, evaluates a
@@ -24,7 +24,7 @@ What works today:
 - A **coordinator** that runs the scan cycle (snapshot → solve → write-on-change)
   on a `DataUpdateCoordinator`, with per-tag input interpretation (`true_states`)
   and an `on_unavailable: false | hold` policy backed by input history.
-- Coils/memory bits published as `binary_sensor` entities under one "Not a PLC" device.
+- Coils/memory bits published as `binary_sensor` entities under one "Not-a-PLC" device.
 - A lossless **text DSL** ↔ IR round-trip so programs can live in git.
 - A UI **config flow** (single instance) and a self-contained **demo program**
   (`programs/demo.json`) whose coil follows the sun — so it works out of the box
@@ -41,13 +41,13 @@ This repo is a standard HACS custom-integration layout (`custom_components/not_a
 1. In Home Assistant: **HACS → ⋮ (top right) → Custom repositories**.
 2. Repository: `https://github.com/HermelerEngineering/ha-not-a-plc`
    — Category: **Integration**. Add it.
-3. Open the new **Not a PLC** entry and **Download** it.
+3. Open the new **Not-a-PLC** entry and **Download** it.
 4. **Restart Home Assistant.**
-5. Add the integration via *Settings → Devices & Services → Add integration → Not a PLC*.
+5. Add the integration via *Settings → Devices & Services → Add integration → Not-a-PLC*.
 6. You should get a `binary_sensor.not_a_plc_daylight` that is `on` during the day.
 
 For the live status view, also install the companion
-[**Not a PLC Card**](https://github.com/HermelerEngineering/ha-not-a-plc-card)
+[**Not-a-PLC Card**](https://github.com/HermelerEngineering/ha-not-a-plc-card)
 (HACS category *Dashboard*).
 
 Prefer a copy-in install? Copy `custom_components/not_a_plc` into your Home

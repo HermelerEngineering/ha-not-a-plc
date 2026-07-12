@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/HermelerEngineering/ha-not-a-plc/schema/program.schema.json",
-  "title": "Not a PLC ladder program",
+  "title": "Not-a-PLC ladder program",
   "type": "object",
   "required": ["tags", "networks"],
   "additionalProperties": false,

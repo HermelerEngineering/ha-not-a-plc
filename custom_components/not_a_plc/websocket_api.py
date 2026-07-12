@@ -28,7 +28,7 @@ ERR_NOT_LOADED = "not_loaded"
 
 @callback
 def async_register(hass: HomeAssistant) -> None:
-    """Register the Not a PLC websocket commands (called once from setup)."""
+    """Register the Not-a-PLC websocket commands (called once from setup)."""
     websocket_api.async_register_command(hass, ws_list_services)
     websocket_api.async_register_command(hass, ws_get_program)
     websocket_api.async_register_command(hass, ws_subscribe_state)
@@ -88,7 +88,7 @@ def ws_get_program(
     """Return the canonical program IR for one service."""
     coordinator = _get_coordinator(hass, msg.get("entry_id"))
     if coordinator is None:
-        connection.send_error(msg["id"], ERR_NOT_LOADED, "Not a PLC is not set up")
+        connection.send_error(msg["id"], ERR_NOT_LOADED, "Not-a-PLC is not set up")
         return
     connection.send_result(msg["id"], {"program": coordinator.program.to_dict()})
 
@@ -115,7 +115,7 @@ def ws_subscribe_state(
     """
     coordinator = _get_coordinator(hass, msg.get("entry_id"))
     if coordinator is None:
-        connection.send_error(msg["id"], ERR_NOT_LOADED, "Not a PLC is not set up")
+        connection.send_error(msg["id"], ERR_NOT_LOADED, "Not-a-PLC is not set up")
         return
 
     # Last image sent on *this* subscription. ``None`` (sentinel) is distinct from

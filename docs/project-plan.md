@@ -425,7 +425,7 @@ The exact HACS and brands requirements evolve; verify against the current HACS "
 
 ## 9. Decisions to lock now
 
-- **Name.** Resolved: product **"Not a PLC"** (domain `not_a_plc`). "Rung" and "Coil" are kept as ladder-paradigm terms.
+- **Name.** Resolved: user-visible product name **"Not-a-PLC"** (hyphenated) in HA and HACS; domain stays `not_a_plc`. The spaced lowercase "not a PLC" remains the disclaimer. "Rung" and "Coil" are kept as ladder-paradigm terms.
 - **Coil actuation.** Proposal: a coil always publishes its logical truth as a `binary_sensor`, and optionally carries a `writes` binding that calls a service on a real target when it changes. That separates "logic truth" from "actuation" and mirrors your trigger/decision/executor pattern. A `switch` variant (manually overridable) is a nice extra for commissioning, but not the default.
 - **Canonical storage.** JSON in `.storage` as the source of truth (editor-friendly) with lossless YAML export — or the other way round? I lean toward JSON canonical.
 - **Phase-1 scope.** Only `=`/`S`/`R` plus series/parallel/NOT, or pull `R_TRIG`/`F_TRIG` in already? Strictly you do not need edge detection for S/R latches, so I would keep it in phase 3 and keep phase 1 pure bit.
