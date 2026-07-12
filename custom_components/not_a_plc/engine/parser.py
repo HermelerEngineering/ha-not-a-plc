@@ -32,15 +32,17 @@ import re
 from typing import Any
 
 from .errors import ProgramError
-from .model import Compare, Contact, Not, Program
+from .model import Compare, Contact, FbRef, Not, Program
 
 # Words that introduce a statement and therefore cannot be used as tag names.
-_RESERVED = frozenset({"meta", "scan_interval_ms", "tag", "network", "rung", "NOT"})
+_RESERVED = frozenset(
+    {"meta", "scan_interval_ms", "tag", "fb", "network", "rung", "NOT"}
+)
 
 _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 _NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?\Z")
 _TOKEN_RE = re.compile(
-    r"\s*(NOT\b|>=|<=|==|!=|-?\d+(?:\.\d+)?|[()\[\]|!<>]|[A-Za-z_][A-Za-z0-9_]*)"
+    r"\s*(NOT\b|>=|<=|==|!=|-?\d+(?:\.\d+)?|[()\[\]|!<>@]|[A-Za-z_][A-Za-z0-9_]*)"
 )
 _COIL_RE = re.compile(r"\(\s*([=SR])\s+([A-Za-z_][A-Za-z0-9_]*)\s*\)")
 
@@ -77,10 +79,20 @@ def _element_to_text(el: Any) -> str:
     if isinstance(el, Compare):
         left = _ident(el.left, "compare tag")
         return f"[ {left} {_OP_TO_SYM[el.op]} {_operand_to_text(el.right)} ]"
+    if isinstance(el, FbRef):
+        return "@" + _ident(el.instance, "fb instance")
     if isinstance(el, Not):
         return f"NOT( {_series_to_text(el.inner)} )"
     # Branch
     return "( " + " | ".join(_series_to_text(p) for p in el.paths) + " )"
+
+
+def _fb_to_text(name: str, data: dict[str, Any]) -> str:
+    parts = [f"fb {_ident(name, 'fb name')} = {data['type']}"]
+    for key, value in data.items():
+        if key != "type":
+            parts.append(f"{key}={value}")
+    return " ".join(parts)
 
 
 def _series_to_text(elements: list[Any]) -> str:
@@ -121,6 +133,8 @@ def program_to_text(program: Program) -> str:
     lines.append("")
     for name, tag in program.tags.items():
         lines.append(_tag_to_text(name, tag.to_dict()))
+    for name, fb in program.fbs.items():
+        lines.append(_fb_to_text(name, fb.to_dict()))
 
     for net in program.networks:
         lines.append("")
@@ -188,6 +202,11 @@ def _parse_element(tokens: list[str], pos: int) -> tuple[dict[str, Any], int]:
         if pos >= len(tokens) or not _IDENT_RE.match(tokens[pos]):
             raise ProgramError("DSL: '!' must be followed by a tag name")
         return {"type": "contact", "tag": tokens[pos], "mode": "NC"}, pos + 1
+    if tok == "@":
+        pos += 1
+        if pos >= len(tokens) or not _IDENT_RE.match(tokens[pos]):
+            raise ProgramError("DSL: '@' must be followed by a function-block instance")
+        return {"type": "fb", "instance": tokens[pos]}, pos + 1
     if tok == "[":
         pos += 1
         if pos >= len(tokens) or not _IDENT_RE.match(tokens[pos]):
@@ -277,6 +296,28 @@ def _parse_tag(rest: str, where: str) -> tuple[str, dict[str, Any]]:
     return name, data
 
 
+def _parse_fb(rest: str, where: str) -> tuple[str, dict[str, Any]]:
+    # rest = "<name> = <TYPE> [key=value ...]"
+    name_part, sep, spec = rest.partition("=")
+    if not sep:
+        raise ProgramError(f"{where}: expected 'fb <name> = <TYPE> ...'")
+    name = name_part.strip()
+    if name in _RESERVED:
+        raise ProgramError(
+            f"{where}: '{name}' is a reserved word and cannot be an fb name"
+        )
+    fields = spec.split()
+    if not fields:
+        raise ProgramError(f"{where}: a function block needs a type")
+    data: dict[str, Any] = {"type": fields[0]}
+    for kv in fields[1:]:
+        key, eq, value = kv.partition("=")
+        if not eq:
+            raise ProgramError(f"{where}: expected key=value, got '{kv}'")
+        data[key] = _parse_operand(value)
+    return name, data
+
+
 def _parse_header(rest: str, where: str) -> tuple[str, str]:
     # rest = "<id> [\"title\"]"
     parts = rest.split(None, 1)
@@ -300,6 +341,7 @@ def program_from_text(text: str) -> Program:
         "meta": {},
         "scan_interval_ms": 500,
         "tags": {},
+        "fbs": {},
         "networks": [],
     }
     current_net: dict[str, Any] | None = None
@@ -320,6 +362,9 @@ def program_from_text(text: str) -> Program:
         elif head == "tag":
             name, tag_data = _parse_tag(rest, where)
             data["tags"][name] = tag_data
+        elif head == "fb":
+            name, fb_data = _parse_fb(rest, where)
+            data["fbs"][name] = fb_data
         elif head == "network":
             nid, title = _parse_header(rest, where)
             current_net = {"id": nid, "rungs": []}

@@ -11,8 +11,9 @@ Design rules (do not break without updating docs/project-plan.md):
 - A rung is a *series chain*; each position is a single element (contact) or a
   *parallel branch* (list of sub-chains = OR). Chains end in one or more coils.
 
-Phase 1 supports contacts (NO/NC), series/parallel, ``NOT`` groups, and coils
-``=`` / ``S`` / ``R``. Later phases extend this file (function blocks, timers).
+Supports contacts (NO/NC), series/parallel, ``NOT`` groups, coils ``=`` / ``S`` /
+``R``, ``REAL`` comparators, and function-block instances (``fbs`` + inline
+``FbRef``; edge detect today, timers/counters next).
 """
 
 from __future__ import annotations
@@ -36,6 +37,9 @@ IMPLEMENTED_COIL_MODES: frozenset[str] = frozenset({"=", "S", "R"})
 
 # Comparison operators the evaluator implements (phase 3).
 COMPARE_OPS: frozenset[str] = frozenset({"GT", "GE", "LT", "LE", "EQ", "NE"})
+
+# Function-block types the engine implements (phase 3, growing).
+KNOWN_FB_TYPES: frozenset[str] = frozenset({"R_TRIG", "F_TRIG"})
 
 
 # --- Helpers ----------------------------------------------------------------
@@ -161,6 +165,36 @@ class Tag:
         )
 
 
+# --- Function-block instances ----------------------------------------------
+
+
+@dataclass(slots=True)
+class FunctionBlock:
+    """A stateful function-block instance declaration (edge / timer / counter).
+
+    ``type`` selects the block; ``params`` holds its configuration (e.g. a timer
+    preset). Instance state lives at runtime, not here — the engine threads it
+    through :func:`scan.evaluate`.
+    """
+
+    type: str
+    params: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"type": self.type, **self.params}
+
+    @classmethod
+    def from_dict(cls, name: str, data: dict[str, Any]) -> FunctionBlock:
+        where = f"fb '{name}'"
+        type_ = _get(data, "type", where)
+        _require(
+            type_ in KNOWN_FB_TYPES,
+            f"{where}: unknown function-block type '{type_}'",
+        )
+        params = {k: v for k, v in data.items() if k != "type"}
+        return cls(type=type_, params=params)
+
+
 # --- Rung elements ----------------------------------------------------------
 
 
@@ -214,7 +248,22 @@ class Compare:
         }
 
 
-Element = Contact | Branch | Not | Compare
+@dataclass(slots=True)
+class FbRef:
+    """Inline reference to a function-block instance in a rung series.
+
+    Its input is the rung power reaching it (the CLK/IN); it conducts on the
+    block's output ``Q``. Only valid at the top level of a rung series — not
+    inside a branch or ``NOT`` — so left-to-right power stays well defined.
+    """
+
+    instance: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"type": "fb", "instance": self.instance}
+
+
+Element = Contact | Branch | Not | Compare | FbRef
 
 
 def _compare_from_dict(data: dict[str, Any], where: str) -> Compare:
@@ -272,6 +321,14 @@ def _element_from_dict(data: dict[str, Any], where: str) -> Element:
 
     if data.get("type") == "compare":
         return _compare_from_dict(data, where)
+
+    if data.get("type") == "fb":
+        instance = _get(data, "instance", where)
+        _require(
+            isinstance(instance, str) and instance,
+            f"{where}: fb 'instance' must be a non-empty string",
+        )
+        return FbRef(instance=instance)
 
     _require(
         data.get("type") == "contact",
@@ -383,14 +440,18 @@ class Program:
     networks: list[Network] = field(default_factory=list)
     scan_interval_ms: int = 500
     meta: dict[str, Any] = field(default_factory=dict)
+    fbs: dict[str, FunctionBlock] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        data: dict[str, Any] = {
             "meta": self.meta,
             "scan_interval_ms": self.scan_interval_ms,
             "tags": {name: tag.to_dict() for name, tag in self.tags.items()},
             "networks": [n.to_dict() for n in self.networks],
         }
+        if self.fbs:
+            data["fbs"] = {name: fb.to_dict() for name, fb in self.fbs.items()}
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Program:
@@ -413,18 +474,32 @@ class Program:
             Network.from_dict(n, f"networks[{i}]") for i, n in enumerate(networks_raw)
         ]
 
+        fbs_raw = data.get("fbs", {})
+        _require(isinstance(fbs_raw, dict), "program: 'fbs' must be an object")
+        fbs = {
+            name: FunctionBlock.from_dict(name, fb_data)
+            for name, fb_data in fbs_raw.items()
+        }
+
         program = cls(
             tags=tags,
             networks=networks,
             scan_interval_ms=scan,
             meta=dict(data.get("meta", {})),
+            fbs=fbs,
         )
         program._validate_references()
         return program
 
     def _validate_references(self) -> None:
-        """Every tag referenced by a contact or coil must be declared."""
+        """Every tag/instance referenced by an element or coil must be declared."""
         known = set(self.tags)
+
+        for name in self.fbs:
+            _require(
+                name not in known,
+                f"fb instance '{name}' clashes with a tag of the same name",
+            )
 
         def check_real(tag: str, where: str) -> None:
             _require(tag in known, f"{where}: compare references unknown tag '{tag}'")
@@ -434,6 +509,7 @@ class Program:
             )
 
         def check_element(el: Element, where: str) -> None:
+            """Validate a *nested* element (inside a branch or NOT)."""
             if isinstance(el, Contact):
                 _require(
                     el.tag in known,
@@ -443,6 +519,10 @@ class Program:
                 check_real(el.left, where)
                 if isinstance(el.right, str):
                     check_real(el.right, where)
+            elif isinstance(el, FbRef):
+                raise ProgramError(
+                    f"{where}: a function block may not appear inside a branch or NOT"
+                )
             elif isinstance(el, Not):
                 for i, sub in enumerate(el.inner):
                     check_element(sub, f"{where}.not[{i}]")
@@ -454,7 +534,14 @@ class Program:
         for n in self.networks:
             for r in n.rungs:
                 for i, el in enumerate(r.series):
-                    check_element(el, f"network '{n.id}' rung '{r.id}' series[{i}]")
+                    where = f"network '{n.id}' rung '{r.id}' series[{i}]"
+                    if isinstance(el, FbRef):
+                        _require(
+                            el.instance in self.fbs,
+                            f"{where}: unknown function-block instance '{el.instance}'",
+                        )
+                    else:
+                        check_element(el, where)
                 for c in r.coils:
                     _require(
                         c.tag in known,

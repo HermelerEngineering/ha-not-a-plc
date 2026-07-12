@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "name": "Edge detect",
+    "description": "R_TRIG (phase 3): the coil pulses for exactly one scan on the rising edge of the trigger, then stays off while it is held."
+  },
+  "scan_interval_ms": 500,
+  "tags": {
+    "trigger": { "kind": "input", "source": "binary_sensor.button" },
+    "pulse": { "kind": "coil", "type": "BOOL" }
+  },
+  "fbs": {
+    "redge": { "type": "R_TRIG" }
+  },
+  "networks": [
+    {
+      "id": "n1",
+      "title": "Rising edge",
+      "rungs": [
+        {
+          "id": "r1",
+          "title": "pulse on press",
+          "series": [
+            { "type": "contact", "tag": "trigger" },
+            { "type": "fb", "instance": "redge" }
+          ],
+          "coils": [{ "type": "coil", "tag": "pulse" }]
+        }
+      ]
+    }
+  ]
+}

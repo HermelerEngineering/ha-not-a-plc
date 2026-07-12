@@ -49,6 +49,9 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
         )
         self.program = program
         self._previous: dict[str, bool] = {}
+        # Function-block instance state, carried across scans in RAM (never to
+        # disk per scan). Each entry is that instance's state incl. its output Q.
+        self._fb_state: dict[str, dict[str, Any]] = {}
         # Last frozen input snapshot, exposed to the websocket status view so the
         # frontend can colour input contacts as well as coils/memory bits.
         self._last_inputs: dict[str, Any] = {}
@@ -142,12 +145,18 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
     async def _async_update_data(self) -> dict[str, bool]:
         try:
             image = self._snapshot()
-            outputs = evaluate(
-                self.program, image, now=dt_util.utcnow(), previous=self._previous
+            result = evaluate(
+                self.program,
+                image,
+                now=dt_util.utcnow(),
+                previous=self._previous,
+                fbs=self._fb_state,
             )
         except ProgramError as err:
             raise UpdateFailed(f"program error: {err}") from err
 
+        outputs: dict[str, bool] = dict(result)
+        self._fb_state = result.fbs
         self._last_inputs = image
 
         await self._write_on_change(outputs)
@@ -189,4 +198,8 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
         image: dict[str, Any] = dict(self._last_inputs)
         if self.data:
             image.update(self.data)
+        # Expose each function block's output Q so the card can colour fb elements.
+        image.update(
+            {name: bool(st.get("q", False)) for name, st in self._fb_state.items()}
+        )
         return image

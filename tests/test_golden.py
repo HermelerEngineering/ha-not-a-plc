@@ -39,10 +39,12 @@ def test_golden_trace_replays(golden: tuple[dict, dict]) -> None:
     program = Program.from_dict(program_data)
 
     previous: dict[str, bool] | None = None
+    fb_state: dict[str, dict] = {}
     for i, step in enumerate(trace["steps"]):
-        outputs = evaluate(program, step["inputs"], previous=previous)
-        assert outputs == step["outputs"], f"step {i} ({step.get('note', '')})"
-        previous = outputs
+        result = evaluate(program, step["inputs"], previous=previous, fbs=fb_state)
+        assert result == step["outputs"], f"step {i} ({step.get('note', '')})"
+        previous = result
+        fb_state = result.fbs
 
 
 def test_golden_round_trips_through_dsl(golden: tuple[dict, dict]) -> None:

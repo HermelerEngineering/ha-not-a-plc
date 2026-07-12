@@ -1,0 +1,29 @@
+{
+  "steps": [
+    {
+      "note": "idle",
+      "inputs": { "trigger": false },
+      "outputs": { "pulse": false }
+    },
+    {
+      "note": "press -> one-scan pulse",
+      "inputs": { "trigger": true },
+      "outputs": { "pulse": true }
+    },
+    {
+      "note": "still held -> no pulse",
+      "inputs": { "trigger": true },
+      "outputs": { "pulse": false }
+    },
+    {
+      "note": "release",
+      "inputs": { "trigger": false },
+      "outputs": { "pulse": false }
+    },
+    {
+      "note": "press again -> pulse",
+      "inputs": { "trigger": true },
+      "outputs": { "pulse": true }
+    }
+  ]
+}

@@ -10,8 +10,10 @@ given scan) carry their value across scans via the ``previous`` argument, so the
 engine stays a pure function of its inputs — no hidden state. Persisting those
 bits across a *restart* is the HA layer's job (see the coordinator's store).
 
-Phase 1 scope: contacts (NO/NC), series (AND), parallel branch (OR), ``NOT``
-groups, and coils ``=`` / ``S`` / ``R``.
+Scope: contacts (NO/NC), series (AND), parallel branch (OR), ``NOT`` groups,
+coils ``=`` / ``S`` / ``R``, ``REAL`` comparators, and stateful function-block
+instances (``R_TRIG`` / ``F_TRIG``; timers/counters build on the same ``fbs``
+state threading).
 """
 
 from __future__ import annotations
@@ -24,9 +26,12 @@ from typing import Any
 from .errors import ProgramError
 from .model import (
     IMPLEMENTED_COIL_MODES,
+    Branch,
     Compare,
     Contact,
     Element,
+    FbRef,
+    FunctionBlock,
     Not,
     Program,
 )
@@ -39,6 +44,24 @@ _COMPARATORS: dict[str, Callable[[float, float], bool]] = {
     "EQ": operator.eq,
     "NE": operator.ne,
 }
+
+
+class ScanResult(dict[str, bool]):
+    """The output image after a scan, plus function-block state on ``.fbs``.
+
+    It *is* the coil/memory output image (so ``result[tag]`` indexing and dict
+    comparisons keep working), and additionally carries each function-block
+    instance's state in ``.fbs`` — which the caller holds in RAM and passes back
+    in on the next scan via the ``fbs`` argument, keeping ``evaluate`` pure.
+    """
+
+    fbs: dict[str, dict[str, Any]]
+
+    def __init__(
+        self, outputs: dict[str, bool], fbs: dict[str, dict[str, Any]]
+    ) -> None:
+        super().__init__(outputs)
+        self.fbs = fbs
 
 
 def _truthy(value: Any) -> bool:
@@ -78,6 +101,11 @@ def _eval_compare(cmp: Compare, image: dict[str, Any]) -> bool:
 
 
 def _eval_element(element: Element, image: dict[str, Any]) -> bool:
+    """Evaluate a *stateless* element (contact / compare / NOT / branch).
+
+    Function-block references are only valid at the top level of a rung (the
+    model enforces this), so they never reach here.
+    """
     if isinstance(element, Contact):
         state = _truthy(image.get(element.tag, False))
         return (not state) if element.mode == "NC" else state
@@ -85,8 +113,9 @@ def _eval_element(element: Element, image: dict[str, Any]) -> bool:
         return _eval_compare(element, image)
     if isinstance(element, Not):
         return not _eval_series(element.inner, image)
-    # Branch: OR of its series paths.
-    return any(_eval_series(path, image) for path in element.paths)
+    if isinstance(element, Branch):
+        return any(_eval_series(path, image) for path in element.paths)
+    raise ProgramError("a function block cannot be evaluated inside a branch or NOT")
 
 
 def _eval_series(elements: list[Element], image: dict[str, Any]) -> bool:
@@ -94,20 +123,72 @@ def _eval_series(elements: list[Element], image: dict[str, Any]) -> bool:
     return all(_eval_element(el, image) for el in elements)
 
 
+def _solve_fb(
+    name: str,
+    block: FunctionBlock,
+    clk: bool,
+    now: datetime | None,
+    fb_prev: dict[str, dict[str, Any]],
+    fb_new: dict[str, dict[str, Any]],
+) -> bool:
+    """Compute a function block's output Q from its input and previous state.
+
+    Records the new instance state in ``fb_new`` and returns Q (which becomes the
+    rung power leaving the block).
+    """
+    state = fb_prev.get(name, {})
+    if block.type == "R_TRIG":
+        q = clk and not bool(state.get("clk", False))
+    elif block.type == "F_TRIG":
+        q = (not clk) and bool(state.get("clk", False))
+    else:
+        raise ProgramError(f"function-block type '{block.type}' is not implemented")
+    fb_new[name] = {"clk": clk, "q": q}
+    return q
+
+
+def _solve_rung(
+    elements: list[Element],
+    values: dict[str, Any],
+    now: datetime | None,
+    program: Program,
+    fb_prev: dict[str, dict[str, Any]],
+    fb_new: dict[str, dict[str, Any]],
+) -> bool:
+    """Left-to-right power solve of a rung's top-level series.
+
+    Stateless elements gate the running power (AND); a function-block reference
+    takes the running power as its input and replaces it with its output Q.
+    """
+    power = True
+    for el in elements:
+        if isinstance(el, FbRef):
+            power = _solve_fb(
+                el.instance, program.fbs[el.instance], power, now, fb_prev, fb_new
+            )
+        else:
+            power = power and _eval_element(el, values)
+    return power
+
+
 def evaluate(
     program: Program,
     image: dict[str, Any],
     now: datetime | None = None,
     previous: dict[str, bool] | None = None,
-) -> dict[str, bool]:
-    """Solve every network top-down and return the resulting output values.
+    fbs: dict[str, dict[str, Any]] | None = None,
+) -> ScanResult:
+    """Solve every network top-down and return the resulting outputs.
 
     ``previous`` is the output image from the last scan; retentive outputs start
-    from it. On the first scan (or when omitted) every output starts ``False``.
+    from it. ``fbs`` is the function-block state from the last scan; each block
+    starts from it. On the first scan (or when omitted) outputs start ``False``
+    and blocks start empty.
 
-    Returns a mapping of coil/memory tag name -> bool. If two rungs write the
-    same tag, the last one wins (deterministic, matching a real scan order): an
-    ``R`` after an ``S`` on the same tag makes reset dominant, and vice versa.
+    Returns a :class:`ScanResult` (a coil/memory tag -> bool mapping with the new
+    function-block state on ``.fbs``). If two rungs write the same tag, the last
+    one wins (deterministic, matching a real scan order): an ``R`` after an ``S``
+    on the same tag makes reset dominant, and vice versa.
     """
     outputs: dict[str, bool] = {name: False for name in program.coil_tags()}
     outputs.update({name: False for name in program.memory_tags()})
@@ -121,9 +202,12 @@ def evaluate(
     # (top-down order), which is what makes rung ordering meaningful.
     values: dict[str, Any] = {**image, **outputs}
 
+    fb_prev = fbs or {}
+    fb_new: dict[str, dict[str, Any]] = {}
+
     for network in program.networks:
         for rung in network.rungs:
-            energised = _eval_series(rung.series, values)
+            energised = _solve_rung(rung.series, values, now, program, fb_prev, fb_new)
             for coil in rung.coils:
                 if coil.mode not in IMPLEMENTED_COIL_MODES:
                     raise ProgramError(
@@ -139,4 +223,4 @@ def evaluate(
                 outputs[coil.tag] = new
                 values[coil.tag] = new
 
-    return outputs
+    return ScanResult(outputs, fb_new)
