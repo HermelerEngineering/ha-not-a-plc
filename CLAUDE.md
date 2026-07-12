@@ -142,13 +142,21 @@ Per `docs/project-plan.md` §5. **Everything via the UI — no YAML/JSON.**
   change. Plus the earlier polish (`( )` coils, rail-aligned stub, larger fonts,
   client-side heartbeat).
 
-## Next task — Phase 3 (extended function blocks)
+## Current task — Phase 3 (extended function blocks)
 
-Per `docs/project-plan.md` §5: edge detect (`R_TRIG`/`F_TRIG`), timers
-(`TON`/`TOF`/`TP`, counting on the injected clock delta), counters (`CTU`/`CTD`),
-comparators (`GT/…/NE` on `REAL` — the bridge to analog sensors), `SR`/`RS`.
-Function blocks carry state → a separate instance declaration in the IR (`fbs`).
-Extend the golden corpus (e.g. ventilation 15-min run-on via `TOF`).
+Per `docs/project-plan.md` §5.
+
+- **Comparators — done (v0.2.0).** A stateless `compare` element conducts when
+  `left <op> right` (`GT/GE/LT/LE/EQ/NE`); `left` is a REAL tag, `right` a numeric
+  constant or another REAL tag. In `engine/model.py` (`Compare`), `engine/scan.py`
+  (`_eval_compare`; missing/non-numeric operand does not conduct), the DSL
+  (`[ left OP right ]`, lossless), the JSON schema, and the card (render box +
+  `compareConducts`). Golden: `analog_hysteresis` (REAL compares → S/R → coil).
+- **Remaining (need the `fbs` state-instance machinery):** edge detect
+  (`R_TRIG`/`F_TRIG`), timers (`TON`/`TOF`/`TP`, counting on the injected clock
+  delta), counters (`CTU`/`CTD`), `SR`/`RS`. Function blocks carry state → a
+  separate instance declaration in the IR (`fbs`). Extend the golden corpus
+  (e.g. ventilation 15-min run-on via `TOF`).
 
 Carried over (not blocking phase 3):
 

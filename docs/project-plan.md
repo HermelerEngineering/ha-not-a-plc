@@ -200,11 +200,21 @@ coils and a blinking heartbeat.
 
 Goal: from bit logic to real control blocks. Function blocks carry state → separate instance declaration in the IR (`fbs`), with retention where meaningful.
 
+- **Comparators: `GT/GE/LT/LE/EQ/NE` on `REAL` — done (v0.2.0).** A stateless
+  `compare` element (`left <op> right`, `right` a constant or another REAL tag) that
+  behaves like a contact, so it needs no `fbs` state. The bridge to analog sensors
+  (humidity, temperature, lux) — you no longer need a threshold `binary_sensor`.
+  Covered end to end: model, engine, DSL round-trip (`[ left OP right ]`), schema,
+  card rendering, and the `analog_hysteresis` golden.
 - Edge detection: `R_TRIG`, `F_TRIG`.
 - Timers: `TON`, `TOF`, `TP` — counting on wall-clock delta per cycle (via the injected clock), not on scan counts.
 - Counters: `CTU`, `CTD` (`CTUD` optional).
-- Comparators: `GT/GE/LT/LE/EQ/NE` on `REAL` — the bridge to analog sensors (humidity, temperature, lux).
 - Latch `SR`/`RS` as explicit blocks.
+
+The stateful blocks above (edge/timers/counters/latches) share one prerequisite:
+the `fbs` state-instance machinery in the IR and a way to carry instance state
+across scans (like retentive coils today). Build that next, then add the blocks on
+top.
 
 Done when: the ventilation case with a 15-minute run-on (`TOF`) and hysteresis via comparators runs fully as blocks, including the live view.
 
