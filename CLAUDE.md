@@ -158,11 +158,21 @@ Per `docs/project-plan.md` §5.
   interval, writing the updated program back to that service's `.storage` program
   and reloading (entry update listener). This is the stopgap authoring path until
   the phase-4 editor; it does not add/remove logic, only rebinds inputs + interval.
-- **Remaining (need the `fbs` state-instance machinery):** edge detect
-  (`R_TRIG`/`F_TRIG`), timers (`TON`/`TOF`/`TP`, counting on the injected clock
-  delta), counters (`CTU`/`CTD`), `SR`/`RS`. Function blocks carry state → a
-  separate instance declaration in the IR (`fbs`). Extend the golden corpus
-  (e.g. ventilation 15-min run-on via `TOF`).
+- **`fbs` foundation + edge detect — done (v0.4.0).** A top-level `fbs` declares
+  stateful instances; an inline `fb` element (`FbRef`) references one, taking the
+  rung power as its input and conducting on its output `Q`. Valid only at the top
+  level of a rung (not inside a branch/NOT) so left-to-right power is well defined.
+  `evaluate` now returns a `ScanResult` (a dict of outputs **plus** `.fbs` state)
+  and takes the previous `fbs` state — still pure, state threaded in/out. The
+  coordinator holds fb state in RAM (no per-scan disk) and publishes each block's
+  `Q` in `state_image` so the card colours fb elements (which read Q from state).
+  DSL: `fb <name> = <TYPE>` + `@instance`. `R_TRIG`/`F_TRIG` implemented; golden
+  `edge_detect`. Card renders fb as a labelled box (card v0.3.0).
+- **Remaining stateful blocks (build on `fbs`):** timers (`TON`/`TOF`/`TP`, counting
+  on the injected clock delta — `evaluate` already takes `now`), counters
+  (`CTU`/`CTD`), `SR`/`RS`. Extend the golden corpus (e.g. ventilation 15-min
+  run-on via `TOF`). A block that exposes a REAL output (timer ET) will add a way
+  to surface fb outputs beyond the single boolean `Q`.
 
 Carried over (not blocking phase 3):
 

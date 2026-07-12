@@ -206,15 +206,20 @@ Goal: from bit logic to real control blocks. Function blocks carry state → sep
   (humidity, temperature, lux) — you no longer need a threshold `binary_sensor`.
   Covered end to end: model, engine, DSL round-trip (`[ left OP right ]`), schema,
   card rendering, and the `analog_hysteresis` golden.
-- Edge detection: `R_TRIG`, `F_TRIG`.
-- Timers: `TON`, `TOF`, `TP` — counting on wall-clock delta per cycle (via the injected clock), not on scan counts.
+- **`fbs` foundation + edge detection (`R_TRIG`, `F_TRIG`) — done (v0.4.0).** The
+  state-instance machinery: a top-level `fbs` declares instances; an inline `fb`
+  element takes the rung power as input and conducts on its output `Q` (top level of
+  a rung only). `evaluate` returns a `ScanResult` (outputs + `.fbs` state) and takes
+  the previous state — pure, threaded in/out. The coordinator keeps fb state in RAM
+  (no per-scan disk) and publishes `Q` in `state_image`. DSL `fb <name> = <TYPE>` +
+  `@instance`; schema; golden `edge_detect`; card renders fb as a labelled box.
+- Timers: `TON`, `TOF`, `TP` — counting on wall-clock delta per cycle (via the injected clock), not on scan counts. (`evaluate` already takes `now`; build on `fbs`.)
 - Counters: `CTU`, `CTD` (`CTUD` optional).
 - Latch `SR`/`RS` as explicit blocks.
 
-The stateful blocks above (edge/timers/counters/latches) share one prerequisite:
-the `fbs` state-instance machinery in the IR and a way to carry instance state
-across scans (like retentive coils today). Build that next, then add the blocks on
-top.
+The remaining blocks build directly on the `fbs` machinery above. Timers add
+wall-clock delta accumulation (using the injected `now`) and, for the elapsed time
+(`ET`), a way to surface a REAL fb output beyond the boolean `Q`.
 
 Done when: the ventilation case with a 15-minute run-on (`TOF`) and hysteresis via comparators runs fully as blocks, including the live view.
 
