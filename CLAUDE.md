@@ -142,9 +142,11 @@ Per `docs/project-plan.md` §5. **Everything via the UI — no YAML/JSON.**
   change. Plus the earlier polish (`( )` coils, rail-aligned stub, larger fonts,
   client-side heartbeat).
 
-## Current task — Phase 3 (extended function blocks)
+## Phase 3 is complete — extended function blocks (v0.7.0)
 
-Per `docs/project-plan.md` §5.
+Per `docs/project-plan.md` §5. All function blocks are in the pure engine, DSL,
+schema and card, each with a golden. No card change was needed beyond the fb box
+(v0.3.0) — new block types render as a labelled box coloured by `Q`.
 
 - **Comparators — done (v0.2.0).** A stateless `compare` element conducts when
   `left <op> right` (`GT/GE/LT/LE/EQ/NE`); `left` is a REAL tag, `right` a numeric
@@ -182,24 +184,29 @@ Per `docs/project-plan.md` §5.
   no card change); `_validate_references` allows the dotted operand
   (`_fb_numeric_outputs(type)`); the DSL round-trips dotted operands (`_REF_RE`).
   **Counter `CV` will surface automatically via this same path** once counters land.
+- **Counters + latches — done (v0.7.0).** Multi-input via option A: primary input =
+  rung power; secondary inputs named as tag refs in the declaration. `CTU`
+  (`{pv, reset?}`, `Q = CV ≥ PV`), `CTD` (`{pv, load?}`, `Q = CV ≤ 0`), `SR`
+  (set-dominant, `{reset}`), `RS` (reset-dominant, `{reset}`). `_solve_fb` gets
+  `values` to read the secondary tag inputs; counters store `cv` so `CV` surfaces
+  via the v0.6.0 mechanism. Validation: `pv` positive int; latch needs `reset`;
+  referenced tags must exist. Goldens `sr_latch`, `count_up`. No card change.
 
-## Next task — counters `CTU`/`CTD` + latches `SR`/`RS`
+## Next task — Phase 4 (graphical editor)
 
-Multi-input decision is **made (option A)**: a block's primary input is the rung
-power at its inline `fb`; extra boolean inputs + numeric params are named in the
-instance declaration (tag references / constants). Per-block shapes and Q formulas
-are in `docs/project-plan.md` §5 resumption notes (and §9). To implement: extend
-`KNOWN_FB_TYPES`, add `_solve_fb` branches (store `cv` for counters — `CV` then
-surfaces for free via the v0.6.0 mechanism), the schema `fb` def, and
-`_validate_references` (referenced reset/load/set tags must exist). DSL param
-round-trip is already generic. Add a golden per block. No card change expected
-(renders as the fb box).
+The big one: build programs by dragging, serialising to the same IR the engine
+runs. See `docs/project-plan.md` §5 phase 4 + §3a. It reuses the card's
+render/power-flow layer as a full-page HA **panel** (menu item, ESPHome-Builder
+style) in the frontend repo; the read-only card stays. This also finally makes the
+program **user-editable** (canonical in `.storage`, where the config flow already
+seeds it) — the biggest carried-over item below.
 
-Carried over (not blocking phase 3):
+Carried over (candidates to fold into phase 4 or do alongside):
 
-- Programs are per-service in `.storage` but only *seeded* from bundled starters;
-  in-place *editing* (the graphical editor, phase 4) and lossless YAML export are
-  still pending. The `temp` tag kind (§9) is not in `engine/model.py` yet.
+- **User-editable program** in `.storage` is the crux of phase 4 (today the program
+  is only *seeded* from bundled starters; the options flow rebinds inputs only).
+  Lossless YAML export for git is part of this.
+- The `temp` tag kind (§9) is not in `engine/model.py` yet.
 - A commandable `switch` coil variant for commissioning is still optional.
 
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)

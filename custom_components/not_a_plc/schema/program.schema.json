@@ -66,8 +66,13 @@
       "type": "object",
       "required": ["type"],
       "properties": {
-        "type": { "enum": ["R_TRIG", "F_TRIG", "TON", "TOF", "TP"] },
-        "preset_ms": { "type": "integer", "exclusiveMinimum": 0 }
+        "type": {
+          "enum": ["R_TRIG", "F_TRIG", "TON", "TOF", "TP", "CTU", "CTD", "SR", "RS"]
+        },
+        "preset_ms": { "type": "integer", "exclusiveMinimum": 0 },
+        "pv": { "type": "integer", "exclusiveMinimum": 0 },
+        "reset": { "type": "string" },
+        "load": { "type": "string" }
       }
     },
     "element": {

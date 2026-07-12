@@ -25,7 +25,9 @@ from typing import Any
 
 from .errors import ProgramError
 from .model import (
+    COUNTER_TYPES,
     IMPLEMENTED_COIL_MODES,
+    LATCH_TYPES,
     TIMER_TYPES,
     Branch,
     Compare,
@@ -129,14 +131,16 @@ def _solve_fb(
     block: FunctionBlock,
     clk: bool,
     now: datetime | None,
+    values: dict[str, Any],
     fb_prev: dict[str, dict[str, Any]],
     fb_new: dict[str, dict[str, Any]],
 ) -> bool:
-    """Compute a function block's output Q from its input and previous state.
+    """Compute a function block's output Q from its inputs and previous state.
 
-    ``clk`` is the rung power reaching the block (the CLK / IN). Records the new
-    instance state in ``fb_new`` and returns Q (which becomes the rung power
-    leaving the block).
+    ``clk`` is the rung power reaching the block (the primary input CLK / IN / CU /
+    CD / S). Multi-input blocks read their secondary inputs (``reset`` / ``load``)
+    as tag references from ``values``. Records the new instance state in ``fb_new``
+    and returns Q (which becomes the rung power leaving the block).
     """
     state = fb_prev.get(name, {})
     btype = block.type
@@ -149,20 +153,33 @@ def _solve_fb(
         q = (not clk) and bool(state.get("clk", False))
         fb_new[name] = {"clk": clk, "q": q}
         return q
+    if btype in TIMER_TYPES:
+        return _solve_timer(name, block, clk, now, state, fb_new)
+    if btype in COUNTER_TYPES:
+        return _solve_counter(name, block, clk, values, state, fb_new)
+    if btype in LATCH_TYPES:
+        return _solve_latch(name, block, clk, values, state, fb_new)
+    raise ProgramError(f"function-block type '{btype}' is not implemented")
 
-    if btype not in TIMER_TYPES:
-        raise ProgramError(f"function-block type '{btype}' is not implemented")
 
+def _solve_timer(
+    name: str,
+    block: FunctionBlock,
+    clk: bool,
+    now: datetime | None,
+    state: dict[str, Any],
+    fb_new: dict[str, dict[str, Any]],
+) -> bool:
     # Timers accumulate wall-clock time via the injected ``now`` (never scan
     # counts), so they stay deterministic under a fake clock in tests.
     if now is None:
-        raise ProgramError(f"function block '{name}' ({btype}) needs a clock")
+        raise ProgramError(f"function block '{name}' ({block.type}) needs a clock")
     now_ms = now.timestamp() * 1000.0
     dt = max(0.0, now_ms - float(state.get("last_ms", now_ms)))
     preset = float(block.params["preset_ms"])
     et = float(state.get("et", 0.0))
 
-    if btype == "TON":
+    if block.type == "TON":
         # On-delay: Q goes true once IN has been true for the preset.
         if clk:
             et = min(preset, et + dt)
@@ -170,7 +187,7 @@ def _solve_fb(
         else:
             et = 0.0
             q = False
-    elif btype == "TOF":
+    elif block.type == "TOF":
         # Off-delay: Q follows IN up immediately, and holds for the preset after
         # IN drops (run-on).
         if clk:
@@ -197,6 +214,61 @@ def _solve_fb(
     return q
 
 
+def _solve_counter(
+    name: str,
+    block: FunctionBlock,
+    clk: bool,
+    values: dict[str, Any],
+    state: dict[str, Any],
+    fb_new: dict[str, dict[str, Any]],
+) -> bool:
+    # Count on the rising edge of the primary input (CU / CD). CV is exposed as a
+    # numeric output for comparators (see _solve_rung).
+    prev_clk = bool(state.get("clk", False))
+    rising = clk and not prev_clk
+    cv = int(state.get("cv", 0))
+    pv = int(block.params["pv"])
+
+    if block.type == "CTU":
+        reset_tag = block.params.get("reset")
+        reset = _truthy(values.get(reset_tag)) if isinstance(reset_tag, str) else False
+        if reset:
+            cv = 0
+        elif rising:
+            cv = min(pv, cv + 1)
+        q = cv >= pv
+    else:  # CTD
+        load_tag = block.params.get("load")
+        load = _truthy(values.get(load_tag)) if isinstance(load_tag, str) else False
+        if load:
+            cv = pv
+        elif rising:
+            cv = max(0, cv - 1)
+        q = cv <= 0
+
+    fb_new[name] = {"clk": clk, "q": q, "cv": cv}
+    return q
+
+
+def _solve_latch(
+    name: str,
+    block: FunctionBlock,
+    clk: bool,
+    values: dict[str, Any],
+    state: dict[str, Any],
+    fb_new: dict[str, dict[str, Any]],
+) -> bool:
+    # S = rung power; R = the declared reset tag. SR is set-dominant, RS reset.
+    reset = _truthy(values.get(block.params["reset"]))
+    prev_q = bool(state.get("q", False))
+    if block.type == "SR":
+        q = clk or (prev_q and not reset)
+    else:  # RS
+        q = (clk or prev_q) and not reset
+    fb_new[name] = {"q": q}
+    return q
+
+
 def _solve_rung(
     elements: list[Element],
     values: dict[str, Any],
@@ -214,7 +286,13 @@ def _solve_rung(
     for el in elements:
         if isinstance(el, FbRef):
             power = _solve_fb(
-                el.instance, program.fbs[el.instance], power, now, fb_prev, fb_new
+                el.instance,
+                program.fbs[el.instance],
+                power,
+                now,
+                values,
+                fb_prev,
+                fb_new,
             )
             # Surface the block's numeric outputs (timer ET, counter CV) so a later
             # compare in this scan can reference ``instance.ET`` / ``instance.CV``.

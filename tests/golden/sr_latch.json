@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "name": "SR latch (start/stop)",
+    "description": "Set-dominant latch (phase 3): a start button latches the motor on; a stop button resets it. Start wins if both are pressed."
+  },
+  "scan_interval_ms": 500,
+  "tags": {
+    "start": { "kind": "input", "source": "binary_sensor.start" },
+    "stop": { "kind": "input", "source": "binary_sensor.stop" },
+    "motor": { "kind": "coil", "type": "BOOL" }
+  },
+  "fbs": {
+    "sr1": { "type": "SR", "reset": "stop" }
+  },
+  "networks": [
+    {
+      "id": "n1",
+      "title": "Motor latch",
+      "rungs": [
+        {
+          "id": "r1",
+          "title": "start latches, stop resets",
+          "series": [
+            { "type": "contact", "tag": "start" },
+            { "type": "fb", "instance": "sr1" }
+          ],
+          "coils": [{ "type": "coil", "tag": "motor" }]
+        }
+      ]
+    }
+  ]
+}

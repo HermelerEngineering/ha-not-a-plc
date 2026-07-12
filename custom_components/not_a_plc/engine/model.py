@@ -40,18 +40,37 @@ COMPARE_OPS: frozenset[str] = frozenset({"GT", "GE", "LT", "LE", "EQ", "NE"})
 
 # Function-block types the engine implements (phase 3, growing).
 TIMER_TYPES: frozenset[str] = frozenset({"TON", "TOF", "TP"})
-KNOWN_FB_TYPES: frozenset[str] = frozenset({"R_TRIG", "F_TRIG"}) | TIMER_TYPES
+COUNTER_TYPES: frozenset[str] = frozenset({"CTU", "CTD"})
+LATCH_TYPES: frozenset[str] = frozenset({"SR", "RS"})
+KNOWN_FB_TYPES: frozenset[str] = (
+    frozenset({"R_TRIG", "F_TRIG"}) | TIMER_TYPES | COUNTER_TYPES | LATCH_TYPES
+)
 
 
 def _fb_numeric_outputs(fb_type: str) -> frozenset[str]:
     """The REAL outputs a function block exposes for use in a comparator.
 
-    Referenced as ``instance.<NAME>`` (e.g. ``t1.ET``). Timers expose the elapsed
-    time ``ET``; counters will expose their value ``CV`` the same way.
+    Referenced as ``instance.<NAME>`` (e.g. ``t1.ET`` / ``c1.CV``). Timers expose
+    the elapsed time ``ET``; counters expose their count ``CV``.
     """
     if fb_type in TIMER_TYPES:
         return frozenset({"ET"})
+    if fb_type in COUNTER_TYPES:
+        return frozenset({"CV"})
     return frozenset()
+
+
+def _fb_referenced_tags(fb: FunctionBlock) -> list[str]:
+    """Tag names a block's declaration references as secondary inputs.
+
+    Multi-input blocks (counters, latches) name their extra boolean inputs
+    (``reset`` / ``load``) in the declaration; the primary input is the rung power.
+    """
+    return [
+        value
+        for param in ("reset", "load")
+        if isinstance((value := fb.params.get(param)), str)
+    ]
 
 
 # --- Helpers ----------------------------------------------------------------
@@ -209,6 +228,24 @@ class FunctionBlock:
             _require(
                 isinstance(preset, int) and not isinstance(preset, bool) and preset > 0,
                 f"{where}: a timer needs a positive integer 'preset_ms'",
+            )
+        elif type_ in COUNTER_TYPES:
+            pv = params.get("pv")
+            _require(
+                isinstance(pv, int) and not isinstance(pv, bool) and pv > 0,
+                f"{where}: a counter needs a positive integer 'pv'",
+            )
+            ref = "reset" if type_ == "CTU" else "load"
+            val = params.get(ref)
+            _require(
+                val is None or (isinstance(val, str) and val),
+                f"{where}: counter '{ref}' must be a tag name",
+            )
+        elif type_ in LATCH_TYPES:
+            reset = params.get("reset")
+            _require(
+                isinstance(reset, str) and reset,
+                f"{where}: a latch needs a 'reset' tag name",
             )
         return cls(type=type_, params=params)
 
@@ -513,11 +550,16 @@ class Program:
         """Every tag/instance referenced by an element or coil must be declared."""
         known = set(self.tags)
 
-        for name in self.fbs:
+        for name, fb in self.fbs.items():
             _require(
                 name not in known,
                 f"fb instance '{name}' clashes with a tag of the same name",
             )
+            for tag in _fb_referenced_tags(fb):
+                _require(
+                    tag in known,
+                    f"fb '{name}' references unknown tag '{tag}'",
+                )
 
         def check_real(ref: str, where: str) -> None:
             # A compare operand is a REAL tag, or a function-block numeric output

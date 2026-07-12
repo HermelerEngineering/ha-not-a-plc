@@ -1,0 +1,39 @@
+{
+  "steps": [
+    {
+      "note": "idle",
+      "inputs": { "pulse": false, "rst": false },
+      "outputs": { "done": false }
+    },
+    {
+      "note": "pulse 1",
+      "inputs": { "pulse": true, "rst": false },
+      "outputs": { "done": false }
+    },
+    {
+      "note": "release",
+      "inputs": { "pulse": false, "rst": false },
+      "outputs": { "done": false }
+    },
+    {
+      "note": "pulse 2",
+      "inputs": { "pulse": true, "rst": false },
+      "outputs": { "done": false }
+    },
+    {
+      "note": "release",
+      "inputs": { "pulse": false, "rst": false },
+      "outputs": { "done": false }
+    },
+    {
+      "note": "pulse 3 -> done",
+      "inputs": { "pulse": true, "rst": false },
+      "outputs": { "done": true }
+    },
+    {
+      "note": "reset -> cleared",
+      "inputs": { "pulse": false, "rst": true },
+      "outputs": { "done": false }
+    }
+  ]
+}

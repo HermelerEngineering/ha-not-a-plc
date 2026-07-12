@@ -218,10 +218,16 @@ Goal: from bit logic to real control blocks. Function blocks carry state → sep
   instance and requires `now`. Instance param `preset_ms`; golden `off_delay` (TOF
   run-on); the golden trace format grew an optional per-step `now_ms`. Ships with the
   boolean `Q`; the REAL `ET` output is not yet surfaced (see the resumption notes).
-- Counters: `CTU`, `CTD` (`CTUD` optional).
-- Latch `SR`/`RS` as explicit blocks.
+- **Counters `CTU`/`CTD` — done (v0.7.0).** Option A multi-input: CU/CD = rung
+  power (counts rising edges), reset/load named as a tag ref in the declaration,
+  `pv` constant. `Q = CV ≥ PV` (CTU) / `Q = CV ≤ 0` (CTD). `CV` surfaces as a REAL
+  output (`instance.CV`) via the v0.6.0 mechanism. Golden `count_up`.
+- **Latches `SR`/`RS` — done (v0.7.0).** S = rung power, R = a declared reset tag.
+  `SR` set-dominant (`Q = S OR (Q AND NOT R)`), `RS` reset-dominant
+  (`Q = (S OR Q) AND NOT R`). Golden `sr_latch`.
 
-The remaining blocks build directly on the `fbs` machinery above.
+**Phase 3 is complete.** All blocks live in the pure engine, DSL, schema and card
+(each with a golden); the card needed no change beyond the phase-2 fb box.
 
 #### Resumption notes — timers, counters, latches (next up)
 

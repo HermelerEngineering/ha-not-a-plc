@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "name": "Count up",
+    "description": "CTU (phase 3): the coil turns on once the pulse input has risen 3 times; a reset clears the count."
+  },
+  "scan_interval_ms": 500,
+  "tags": {
+    "pulse": { "kind": "input", "source": "binary_sensor.pulse" },
+    "rst": { "kind": "input", "source": "binary_sensor.reset" },
+    "done": { "kind": "coil", "type": "BOOL" }
+  },
+  "fbs": {
+    "c1": { "type": "CTU", "pv": 3, "reset": "rst" }
+  },
+  "networks": [
+    {
+      "id": "n1",
+      "title": "Count three pulses",
+      "rungs": [
+        {
+          "id": "r1",
+          "title": "done after 3 rising edges",
+          "series": [
+            { "type": "contact", "tag": "pulse" },
+            { "type": "fb", "instance": "c1" }
+          ],
+          "coils": [{ "type": "coil", "tag": "done" }]
+        }
+      ]
+    }
+  ]
+}
