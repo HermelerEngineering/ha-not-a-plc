@@ -1,17 +1,33 @@
 """Config flow for Not a PLC.
 
-Phase 0 is a single-instance, no-options setup: adding the integration creates
-one entry that loads the bundled demo program. Program selection/editing arrives
-with the DSL importer and the graphical editor in later phases.
+Each run of this flow creates one independent *service* (its own device, program,
+entities and scan loop) — there is no single-instance limit. The user names the
+service and picks a starter program and scan interval entirely in the UI; the
+service then owns that program in ``.storage`` (see ``__init__._async_load_program``).
+Editing the program comes later with the graphical editor.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.helpers import selector
 
-from .const import DOMAIN
+from .const import (
+    BUNDLED_PROGRAMS,
+    CONF_SCAN_INTERVAL,
+    CONF_STARTER,
+    DEFAULT_SCAN_INTERVAL_MS,
+    DEFAULT_STARTER,
+    DOMAIN,
+    SCAN_INTERVAL_PRESETS,
+)
+
+
+def _interval_label(ms: int) -> str:
+    return f"{ms} ms" if ms < 1000 else f"{ms // 1000} s"
 
 
 class LadderConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -22,11 +38,43 @@ class LadderConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle the initial step."""
-        await self.async_set_unique_id(DOMAIN)
-        self._abort_if_unique_id_configured()
-
+        """Create a new service: name + starter program + scan interval."""
         if user_input is not None:
-            return self.async_create_entry(title="Not a PLC", data={})
+            return self.async_create_entry(
+                title=user_input["name"],
+                data={
+                    CONF_STARTER: user_input[CONF_STARTER],
+                    CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL]),
+                },
+            )
 
-        return self.async_show_form(step_id="user")
+        schema = vol.Schema(
+            {
+                vol.Required("name", default="Not a PLC"): selector.TextSelector(),
+                vol.Required(
+                    CONF_STARTER, default=DEFAULT_STARTER
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(value=pid, label=label)
+                            for pid, (label, _file) in BUNDLED_PROGRAMS.items()
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    CONF_SCAN_INTERVAL, default=str(DEFAULT_SCAN_INTERVAL_MS)
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            selector.SelectOptionDict(
+                                value=str(ms), label=_interval_label(ms)
+                            )
+                            for ms in SCAN_INTERVAL_PRESETS
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(step_id="user", data_schema=schema)

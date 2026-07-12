@@ -1,16 +1,15 @@
 """Websocket API: the bridge between the engine and the frontend status view.
 
-Phase 2 exposes two read-only commands, both consumed by the Lovelace monitor
-card:
+Phase 2/2A read-only commands, consumed by the Lovelace monitor card:
 
-* ``not_a_plc/get_program`` — returns the canonical IR (``Program.to_dict``) so
-  the card can draw the rungs.
-* ``not_a_plc/subscribe_state`` — pushes the full process image (inputs, memory
-  bits and coils) after every scan, so the card can colour "energised" elements
-  live. The current image is sent once immediately on subscribe.
+* ``not_a_plc/list_services`` — the running services (``entry_id`` + name) so the
+  card can offer a service selector.
+* ``not_a_plc/get_program`` — the canonical IR of one service, to draw the rungs.
+* ``not_a_plc/subscribe_state`` — the process image of one service, pushed on each
+  actual change (see the change-detection note below).
 
-Both commands operate on the single Not a PLC instance; there is exactly one
-config entry, so we resolve its coordinator from ``hass.data``.
+Each command optionally takes an ``entry_id`` to target a specific service. When
+omitted, the first running service is used (handy with a single instance).
 """
 
 from __future__ import annotations
@@ -30,15 +29,26 @@ ERR_NOT_LOADED = "not_loaded"
 @callback
 def async_register(hass: HomeAssistant) -> None:
     """Register the Not a PLC websocket commands (called once from setup)."""
+    websocket_api.async_register_command(hass, ws_list_services)
     websocket_api.async_register_command(hass, ws_get_program)
     websocket_api.async_register_command(hass, ws_subscribe_state)
 
 
-def _get_coordinator(hass: HomeAssistant) -> LadderCoordinator | None:
-    """Return the coordinator of the single instance, or None if not set up."""
+def _get_coordinator(
+    hass: HomeAssistant, entry_id: str | None = None
+) -> LadderCoordinator | None:
+    """Return one service's coordinator, or None if it isn't set up.
+
+    With ``entry_id`` the specific service is returned; without it, the first
+    running service (convenient for a single instance).
+    """
     entries = hass.data.get(DOMAIN)
     if not entries:
         return None
+    if entry_id is not None:
+        data = entries.get(entry_id)
+        coordinator = data.get(DATA_COORDINATOR) if data else None
+        return coordinator if isinstance(coordinator, LadderCoordinator) else None
     for data in entries.values():
         coordinator = data.get(DATA_COORDINATOR)
         if isinstance(coordinator, LadderCoordinator):
@@ -46,29 +56,56 @@ def _get_coordinator(hass: HomeAssistant) -> LadderCoordinator | None:
     return None
 
 
-@websocket_api.websocket_command({vol.Required("type"): "not_a_plc/get_program"})
+@websocket_api.websocket_command({vol.Required("type"): "not_a_plc/list_services"})
+@callback
+def ws_list_services(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Return the running services as ``{entry_id, name}`` for the card selector."""
+    services: list[dict[str, str]] = []
+    for entry_id in hass.data.get(DOMAIN, {}):
+        entry = hass.config_entries.async_get_entry(entry_id)
+        services.append(
+            {"entry_id": entry_id, "name": entry.title if entry else entry_id}
+        )
+    connection.send_result(msg["id"], {"services": services})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "not_a_plc/get_program",
+        vol.Optional("entry_id"): str,
+    }
+)
 @callback
 def ws_get_program(
     hass: HomeAssistant,
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
-    """Return the canonical program IR for the running instance."""
-    coordinator = _get_coordinator(hass)
+    """Return the canonical program IR for one service."""
+    coordinator = _get_coordinator(hass, msg.get("entry_id"))
     if coordinator is None:
         connection.send_error(msg["id"], ERR_NOT_LOADED, "Not a PLC is not set up")
         return
     connection.send_result(msg["id"], {"program": coordinator.program.to_dict()})
 
 
-@websocket_api.websocket_command({vol.Required("type"): "not_a_plc/subscribe_state"})
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "not_a_plc/subscribe_state",
+        vol.Optional("entry_id"): str,
+    }
+)
 @callback
 def ws_subscribe_state(
     hass: HomeAssistant,
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
-    """Stream the process image, but only when it actually changes.
+    """Stream one service's process image, but only when it actually changes.
 
     The scan runs at a fixed cadence (e.g. 2 Hz), yet most cycles change nothing.
     Forwarding the image every cycle floods the websocket connection and HA
@@ -76,7 +113,7 @@ def ws_subscribe_state(
     push the current image once on subscribe, then only on an actual change. When
     every value is static the event rate is ~0.
     """
-    coordinator = _get_coordinator(hass)
+    coordinator = _get_coordinator(hass, msg.get("entry_id"))
     if coordinator is None:
         connection.send_error(msg["id"], ERR_NOT_LOADED, "Not a PLC is not set up")
         return

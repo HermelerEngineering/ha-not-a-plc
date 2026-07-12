@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "name": "Render demo",
+    "description": "Self-contained demo showing a parallel branch (OR) and an NC contact. Uses only sun.sun, so it works without user entities."
+  },
+  "scan_interval_ms": 500,
+  "tags": {
+    "sun_up": {
+      "kind": "input",
+      "source": "sun.sun",
+      "type": "BOOL",
+      "on_unavailable": "false"
+    },
+    "daylight": { "kind": "coil", "type": "BOOL" },
+    "is_dark": { "kind": "coil", "type": "BOOL" }
+  },
+  "networks": [
+    {
+      "id": "n1",
+      "title": "Daylight (OR branch)",
+      "rungs": [
+        {
+          "id": "r1",
+          "title": "Sun up on either check",
+          "series": [
+            {
+              "branch": [
+                [{ "type": "contact", "tag": "sun_up", "mode": "NO" }],
+                [{ "type": "contact", "tag": "sun_up", "mode": "NO" }]
+              ]
+            }
+          ],
+          "coils": [{ "type": "coil", "tag": "daylight", "mode": "=" }]
+        }
+      ]
+    },
+    {
+      "id": "n2",
+      "title": "Darkness (NC)",
+      "rungs": [
+        {
+          "id": "r2",
+          "title": "Coil on when the sun is down",
+          "series": [{ "type": "contact", "tag": "sun_up", "mode": "NC" }],
+          "coils": [{ "type": "coil", "tag": "is_dark", "mode": "=" }]
+        }
+      ]
+    }
+  ]
+}

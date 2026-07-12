@@ -17,7 +17,7 @@ COIL_ENTITY = "binary_sensor.not_a_plc_daylight"
 
 
 async def _setup(hass: HomeAssistant) -> MockConfigEntry:
-    entry = MockConfigEntry(domain=DOMAIN, unique_id=DOMAIN, data={})
+    entry = MockConfigEntry(domain=DOMAIN, unique_id=DOMAIN, title="Not a PLC", data={})
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
@@ -45,3 +45,16 @@ async def test_unload(hass: HomeAssistant) -> None:
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     assert DOMAIN not in hass.data or entry.entry_id not in hass.data[DOMAIN]
+
+
+async def test_multiple_services_namespace_entities(hass: HomeAssistant) -> None:
+    """Two services get their own device, so entity_ids are namespaced by name."""
+    hass.states.async_set("sun.sun", "above_horizon")
+    for title in ("Alpha", "Beta"):
+        entry = MockConfigEntry(domain=DOMAIN, title=title, data={})
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.states.get("binary_sensor.alpha_daylight") is not None
+    assert hass.states.get("binary_sensor.beta_daylight") is not None

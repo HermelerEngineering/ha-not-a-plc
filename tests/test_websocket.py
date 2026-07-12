@@ -25,6 +25,7 @@ from custom_components.not_a_plc.engine import Program
 from custom_components.not_a_plc.websocket_api import (
     ERR_NOT_LOADED,
     ws_get_program,
+    ws_list_services,
     ws_subscribe_state,
 )
 
@@ -74,8 +75,8 @@ def _use_program(monkeypatch: pytest.MonkeyPatch, data: dict) -> None:
     monkeypatch.setattr(integration, "_load_default_program", lambda: program)
 
 
-async def _setup(hass: HomeAssistant) -> MockConfigEntry:
-    entry = MockConfigEntry(domain=DOMAIN, unique_id=DOMAIN, data={})
+async def _setup(hass: HomeAssistant, title: str = "Not a PLC") -> MockConfigEntry:
+    entry = MockConfigEntry(domain=DOMAIN, title=title, data={})
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
@@ -147,3 +148,37 @@ async def test_subscribe_state_sends_only_on_change(
     hass.states.async_set("binary_sensor.trigger", "off")
     await _tick(hass)
     assert len(conn.events) == 2
+
+
+async def test_list_services_and_entry_id_targeting(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_program(monkeypatch, _PROGRAM)
+    hass.states.async_set("binary_sensor.trigger", "off")
+    entry_a = await _setup(hass, "Service A")
+    entry_b = await _setup(hass, "Service B")
+
+    # list_services returns both running services with their names.
+    conn = FakeConnection()
+    ws_list_services(hass, conn, {"id": 1, "type": "not_a_plc/list_services"})
+    services = conn.results[1]["services"]
+    assert {s["name"] for s in services} == {"Service A", "Service B"}
+    assert {s["entry_id"] for s in services} == {entry_a.entry_id, entry_b.entry_id}
+
+    # get_program targets a specific service by entry_id.
+    conn2 = FakeConnection()
+    ws_get_program(
+        hass,
+        conn2,
+        {"id": 2, "type": "not_a_plc/get_program", "entry_id": entry_a.entry_id},
+    )
+    assert conn2.results[2]["program"]["meta"]["name"] == "WS demo"
+
+    # An unknown entry_id errors instead of falling back.
+    conn3 = FakeConnection()
+    ws_get_program(
+        hass,
+        conn3,
+        {"id": 3, "type": "not_a_plc/get_program", "entry_id": "does-not-exist"},
+    )
+    assert conn3.errors[3][0] == ERR_NOT_LOADED

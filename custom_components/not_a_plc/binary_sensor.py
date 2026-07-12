@@ -32,7 +32,7 @@ async def async_setup_entry(
 
     tags = list(program.coil_tags()) + list(program.memory_tags())
     async_add_entities(
-        LadderBitSensor(coordinator, entry.entry_id, tag) for tag in tags
+        LadderBitSensor(coordinator, entry.entry_id, entry.title, tag) for tag in tags
     )
 
 
@@ -41,14 +41,22 @@ class LadderBitSensor(CoordinatorEntity[LadderCoordinator], BinarySensorEntity):
 
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator: LadderCoordinator, entry_id: str, tag: str) -> None:
+    def __init__(
+        self,
+        coordinator: LadderCoordinator,
+        entry_id: str,
+        service_name: str,
+        tag: str,
+    ) -> None:
         super().__init__(coordinator)
         self._tag = tag
         self._attr_name = tag
         self._attr_unique_id = f"{entry_id}_{tag}"
+        # One device per service, named after the service, so each service's
+        # entities are grouped and their entity_ids are namespaced by that name.
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry_id)},
-            name="Not a PLC",
+            name=service_name,
             manufacturer="Not a PLC",
             entry_type=DeviceEntryType.SERVICE,
         )

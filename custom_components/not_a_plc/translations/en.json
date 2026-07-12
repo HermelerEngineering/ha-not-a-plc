@@ -2,12 +2,14 @@
   "config": {
     "step": {
       "user": {
-        "title": "Not a PLC",
-        "description": "Set up Not a PLC, a cyclic ladder-logic engine. It loads a bundled demo program that follows the sun (day = on)."
+        "title": "Add a Not a PLC service",
+        "description": "Each service runs its own program on its own scan loop. Name it, pick a starter program and choose how often it scans. You can add more services later and edit the program in a future update.",
+        "data": {
+          "name": "Service name",
+          "starter_program": "Starter program",
+          "scan_interval_ms": "Scan interval"
+        }
       }
-    },
-    "abort": {
-      "already_configured": "Not a PLC is already set up."
     }
   }
 }
