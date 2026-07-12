@@ -215,6 +215,19 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
 - **4.2 (next)** tag management via HA pickers (§3a). **4.3** element editing (forms).
 - **4.4** structure + the drag-drop grid canvas. **4.5** validation UX + YAML + polish.
 
+### Known issues to fix next (reported after 4.1; not yet fixed)
+
+- **Double custom-element registration (card repo).** With the panel installed, the
+  bundle loads twice (panel `module_url` + the Lovelace card resource), and the Lit
+  `@customElement` decorator calls `customElements.define` unconditionally →
+  `Failed to execute 'define'… "not-a-plc-card" has already been used`. Fix: guard
+  each define so the bundle is idempotent when loaded more than once — e.g. replace
+  `@customElement("x")` with a manual `if (!customElements.get("x")) customElements.define("x", C)`
+  (or a small `defineOnce` helper) for `not-a-plc-card`, `not-a-plc-card-editor`,
+  and `not-a-plc-panel`. Harmless (the first define wins) but noisy in the log.
+- **User has additional feedback** on things that aren't quite right yet — collect
+  and triage these at the start of the next session, before/with 4.2.
+
 Carried over (fold into phase 4):
 
 - The `temp` tag kind (§9) is not in `engine/model.py` yet — add when tag management
