@@ -217,9 +217,42 @@ Goal: from bit logic to real control blocks. Function blocks carry state → sep
 - Counters: `CTU`, `CTD` (`CTUD` optional).
 - Latch `SR`/`RS` as explicit blocks.
 
-The remaining blocks build directly on the `fbs` machinery above. Timers add
-wall-clock delta accumulation (using the injected `now`) and, for the elapsed time
-(`ET`), a way to surface a REAL fb output beyond the boolean `Q`.
+The remaining blocks build directly on the `fbs` machinery above.
+
+#### Resumption notes — timers, counters, latches (next up)
+
+Where the code lives: `engine/model.py` (`KNOWN_FB_TYPES`, `FunctionBlock` params),
+`engine/scan.py` (`_solve_fb` — add a branch per block type), the JSON schema (`fb`
+def), the DSL (`_parse_fb` already parses `key=value` params; `_fb_to_text` emits
+them), and the card (`render.ts` draws any fb as a labelled box — no change needed
+for new *single-input* types). Add a golden per block.
+
+Suggested order and the one design fork to resolve first:
+
+1. **Timers `TON` / `TOF` / `TP` (do first — they fit the current model).** A timer
+   has a single input (`IN` = the rung power), so it slots into the existing inline
+   `fb` element unchanged.
+   - Param: `preset_ms` (int) on the instance (`fb t1 = TON preset_ms=15000`).
+   - Needs elapsed time → use the injected `now`. Store the previous `now` (epoch
+     ms) and accumulate `dt` in the block's `fbs` state; **require `now` is not
+     None** for timer blocks (the coordinator always passes it; pure tests pass a
+     fake clock — this is exactly why `evaluate` takes `now`). Test with a fake
+     clock advancing across the preset boundary (`TON` asserts `Q` flips exactly at
+     `preset_ms`, `TOF` holds then drops, `TP` pulses for `preset_ms`).
+   - **`ET` (elapsed, a REAL output).** Decide how a program reads it. Options:
+     (a) expose fb REAL outputs in `state_image` under `instance.ET` and let a
+     `compare` reference `instance.ET`; (b) bind the timer's ET to a declared REAL
+     memory tag. Lean to (a). Until then, ship timers with only the boolean `Q`.
+
+2. **Multi-input blocks — counters `CTU`/`CTD` and latches `SR`/`RS` — need one
+   decision first.** These take **two+ inputs** (count + reset; set + reset), but the
+   inline `fb` element only carries one input (the rung power). Resolve how the extra
+   inputs are supplied before implementing:
+   - (A) name the extra inputs in the instance declaration (e.g.
+     `{"type":"CTU","reset":"<tag>","pv":5}`), rung power = the primary input; or
+   - (B) extend the `fb` element to carry named input bindings.
+   Lean to (A) for simplicity. Note `S`/`R` *coils* already give latch behaviour at
+   the rung level; explicit `SR`/`RS` blocks are only for inline use.
 
 Done when: the ventilation case with a 15-minute run-on (`TOF`) and hysteresis via comparators runs fully as blocks, including the live view.
 

@@ -168,11 +168,24 @@ Per `docs/project-plan.md` §5.
   `Q` in `state_image` so the card colours fb elements (which read Q from state).
   DSL: `fb <name> = <TYPE>` + `@instance`. `R_TRIG`/`F_TRIG` implemented; golden
   `edge_detect`. Card renders fb as a labelled box (card v0.3.0).
-- **Remaining stateful blocks (build on `fbs`):** timers (`TON`/`TOF`/`TP`, counting
-  on the injected clock delta — `evaluate` already takes `now`), counters
-  (`CTU`/`CTD`), `SR`/`RS`. Extend the golden corpus (e.g. ventilation 15-min
-  run-on via `TOF`). A block that exposes a REAL output (timer ET) will add a way
-  to surface fb outputs beyond the single boolean `Q`.
+## Next task — timers, then counters/latches (build on `fbs`)
+
+See `docs/project-plan.md` §5 **"Resumption notes — timers, counters, latches"**
+for the concrete plan. In short:
+
+- **Do timers `TON`/`TOF`/`TP` first** — single input (`IN` = rung power), so they
+  slot into the existing inline `fb` element. Param `preset_ms`; accumulate elapsed
+  from the injected `now` (require `now` for timers; test with a fake clock). Add a
+  `_solve_fb` branch, extend `KNOWN_FB_TYPES` and the schema `fb` enum, add a golden.
+- **Open decision before counters `CTU`/`CTD` and latches `SR`/`RS`:** they need a
+  second input (reset / set), but the inline `fb` element carries only one. Resolve
+  how extra inputs are supplied — lean to naming them in the instance declaration.
+- **Timer `ET` (REAL output):** decide how programs read it — lean to exposing
+  `instance.ET` in `state_image` so a `compare` can reference it. Until then ship
+  timers with only boolean `Q`.
+
+The card renders any *single-input* fb as a labelled box already, so timers need no
+card change; multi-input blocks may.
 
 Carried over (not blocking phase 3):
 
