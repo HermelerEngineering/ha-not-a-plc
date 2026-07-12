@@ -116,6 +116,49 @@ def test_round_trip_feature_program() -> None:
     assert again.to_dict() == program.to_dict()
 
 
+def test_round_trip_fb_and_et_compare() -> None:
+    """A timer instance, an `@instance` element, and a compare on `t1.ET`."""
+    program = Program.from_dict(
+        {
+            "tags": {
+                "run": {"kind": "input", "source": "binary_sensor.run"},
+                "done": {"kind": "coil"},
+                "half": {"kind": "coil"},
+            },
+            "fbs": {"t1": {"type": "TON", "preset_ms": 5000}},
+            "networks": [
+                {
+                    "id": "n",
+                    "rungs": [
+                        {
+                            "id": "r1",
+                            "series": [
+                                {"type": "contact", "tag": "run"},
+                                {"type": "fb", "instance": "t1"},
+                            ],
+                            "coils": [{"type": "coil", "tag": "done"}],
+                        },
+                        {
+                            "id": "r2",
+                            "series": [
+                                {
+                                    "type": "compare",
+                                    "op": "GE",
+                                    "left": "t1.ET",
+                                    "right": 2500,
+                                }
+                            ],
+                            "coils": [{"type": "coil", "tag": "half"}],
+                        },
+                    ],
+                }
+            ],
+        }
+    )
+    again = program_from_text(program_to_text(program))
+    assert again.to_dict() == program.to_dict()
+
+
 def test_text_is_stable_across_a_second_round_trip() -> None:
     program = _feature_program()
     text1 = program_to_text(program)

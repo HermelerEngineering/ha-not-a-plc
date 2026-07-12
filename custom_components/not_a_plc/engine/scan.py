@@ -216,6 +216,13 @@ def _solve_rung(
             power = _solve_fb(
                 el.instance, program.fbs[el.instance], power, now, fb_prev, fb_new
             )
+            # Surface the block's numeric outputs (timer ET, counter CV) so a later
+            # compare in this scan can reference ``instance.ET`` / ``instance.CV``.
+            new_state = fb_new[el.instance]
+            if "et" in new_state:
+                values[f"{el.instance}.ET"] = new_state["et"]
+            if "cv" in new_state:
+                values[f"{el.instance}.CV"] = new_state["cv"]
         else:
             power = power and _eval_element(el, values)
     return power

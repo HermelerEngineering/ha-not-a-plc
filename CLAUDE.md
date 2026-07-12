@@ -174,21 +174,26 @@ Per `docs/project-plan.md` §5.
   passes it, pure tests pass a fake clock). Q only for now; `ET` not yet exposed.
   Golden `off_delay` (TOF run-on). No card change (renders as the fb box). The
   golden trace format now supports an optional per-step `now_ms`.
+- **Function-block numeric outputs — done (v0.6.0).** A `compare` operand may be a
+  function-block numeric output written `instance.OUTPUT` (e.g. `t1.ET`). Timers
+  expose `ET` (elapsed ms). `_solve_rung` injects `instance.ET`/`instance.CV` into
+  the scan `values` after solving the block (so a later same-scan compare sees it);
+  the coordinator merges them into `state_image` (so the card colours the compare —
+  no card change); `_validate_references` allows the dotted operand
+  (`_fb_numeric_outputs(type)`); the DSL round-trips dotted operands (`_REF_RE`).
+  **Counter `CV` will surface automatically via this same path** once counters land.
 
-## Next task — counters/latches (multi-input decided) + timer ET
+## Next task — counters `CTU`/`CTD` + latches `SR`/`RS`
 
-- **Multi-input decision: made (option A).** A stateful block's primary input is the
-  rung power at its inline `fb`; extra boolean inputs + numeric params are named in
-  the instance declaration as tag references / constants. No multi-terminal element,
-  no card change. Per-block shapes (`CTU`/`CTD`/`SR`/`RS`) and Q formulas are in
-  `docs/project-plan.md` §5 resumption notes (and §9). To implement: extend
-  `KNOWN_FB_TYPES`, add `_solve_fb` branches, the schema `fb` def, and
-  `_validate_references` (referenced tags must exist). DSL param round-trip is
-  already generic. Golden per block. Counter `CV` is a REAL output → surface it the
-  same way as timer `ET`.
-- **Timer `ET` (REAL output):** decide how programs read it — lean to exposing
-  `instance.ET` in `state_image` so a `compare` can reference it. Same mechanism will
-  serve counter `CV`.
+Multi-input decision is **made (option A)**: a block's primary input is the rung
+power at its inline `fb`; extra boolean inputs + numeric params are named in the
+instance declaration (tag references / constants). Per-block shapes and Q formulas
+are in `docs/project-plan.md` §5 resumption notes (and §9). To implement: extend
+`KNOWN_FB_TYPES`, add `_solve_fb` branches (store `cv` for counters — `CV` then
+surfaces for free via the v0.6.0 mechanism), the schema `fb` def, and
+`_validate_references` (referenced reset/load/set tags must exist). DSL param
+round-trip is already generic. Add a golden per block. No card change expected
+(renders as the fb box).
 
 Carried over (not blocking phase 3):
 

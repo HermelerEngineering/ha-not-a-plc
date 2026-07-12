@@ -88,3 +88,69 @@ def test_timer_needs_a_clock() -> None:
     program = _timer_program("TON", 1000)
     with pytest.raises(ProgramError, match="needs a clock"):
         evaluate(program, {"run": True})  # now is None
+
+
+def _et_program() -> Program:
+    """A never-finishing TON whose elapsed time drives a coil via a comparator."""
+    return Program.from_dict(
+        {
+            "tags": {
+                "run": {"kind": "input", "source": "binary_sensor.run"},
+                "done": {"kind": "coil"},
+                "half": {"kind": "coil"},
+            },
+            "fbs": {"t1": {"type": "TON", "preset_ms": 100000}},
+            "networks": [
+                {
+                    "id": "n",
+                    "rungs": [
+                        {
+                            "id": "r1",
+                            "series": [
+                                {"type": "contact", "tag": "run"},
+                                {"type": "fb", "instance": "t1"},
+                            ],
+                            "coils": [{"type": "coil", "tag": "done"}],
+                        },
+                        {
+                            "id": "r2",
+                            "series": [
+                                {
+                                    "type": "compare",
+                                    "op": "GE",
+                                    "left": "t1.ET",
+                                    "right": 1000,
+                                }
+                            ],
+                            "coils": [{"type": "coil", "tag": "half"}],
+                        },
+                    ],
+                }
+            ],
+        }
+    )
+
+
+def test_compare_reads_a_timer_elapsed_time() -> None:
+    program = _et_program()
+    previous: dict[str, bool] | None = None
+    fbs: dict[str, dict] = {}
+
+    def step(run: bool, t: float) -> bool:
+        nonlocal previous, fbs
+        result = evaluate(
+            program,
+            {"run": run},
+            now=_BASE + timedelta(seconds=t),
+            previous=previous,
+            fbs=fbs,
+        )
+        previous = result
+        fbs = result.fbs
+        return result["half"]
+
+    assert step(True, 0.0) is False
+    assert step(True, 0.5) is False
+    assert step(True, 1.0) is True  # ET has reached 1000 ms
+    assert step(True, 2.0) is True
+    assert step(False, 2.5) is False  # IN dropped -> ET resets to 0

@@ -40,9 +40,12 @@ _RESERVED = frozenset(
 )
 
 _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
+# A compare operand reference: a tag, or a function-block output ``instance.ET``.
+_REF_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?\Z")
 _NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?\Z")
 _TOKEN_RE = re.compile(
-    r"\s*(NOT\b|>=|<=|==|!=|-?\d+(?:\.\d+)?|[()\[\]|!<>@]|[A-Za-z_][A-Za-z0-9_]*)"
+    r"\s*(NOT\b|>=|<=|==|!=|-?\d+(?:\.\d+)?"
+    r"|[()\[\]|!<>@]|[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)"
 )
 _COIL_RE = re.compile(r"\(\s*([=SR])\s+([A-Za-z_][A-Za-z0-9_]*)\s*\)")
 
@@ -65,9 +68,15 @@ def _ident(name: str, what: str) -> str:
     return name
 
 
+def _ref(name: str, what: str) -> str:
+    if not _REF_RE.match(name):
+        raise ProgramError(f"DSL export: {what} '{name}' is not a valid reference")
+    return name
+
+
 def _operand_to_text(value: float | int | str) -> str:
     if isinstance(value, str):
-        return _ident(value, "compare tag")
+        return _ref(value, "compare operand")
     if isinstance(value, float):
         return repr(value)
     return str(value)  # int
@@ -77,7 +86,7 @@ def _element_to_text(el: Any) -> str:
     if isinstance(el, Contact):
         return ("!" if el.mode == "NC" else "") + _ident(el.tag, "tag")
     if isinstance(el, Compare):
-        left = _ident(el.left, "compare tag")
+        left = _ref(el.left, "compare operand")
         return f"[ {left} {_OP_TO_SYM[el.op]} {_operand_to_text(el.right)} ]"
     if isinstance(el, FbRef):
         return "@" + _ident(el.instance, "fb instance")
@@ -190,7 +199,7 @@ def _expect(tokens: list[str], pos: int, tok: str) -> int:
 def _parse_operand(tok: str) -> float | int | str:
     if _NUMBER_RE.match(tok):
         return float(tok) if "." in tok else int(tok)
-    if _IDENT_RE.match(tok):
+    if _REF_RE.match(tok):
         return tok
     raise ProgramError(f"DSL: invalid compare operand '{tok}'")
 
@@ -209,8 +218,10 @@ def _parse_element(tokens: list[str], pos: int) -> tuple[dict[str, Any], int]:
         return {"type": "fb", "instance": tokens[pos]}, pos + 1
     if tok == "[":
         pos += 1
-        if pos >= len(tokens) or not _IDENT_RE.match(tokens[pos]):
-            raise ProgramError("DSL: compare '[' must be followed by a tag name")
+        if pos >= len(tokens) or not _REF_RE.match(tokens[pos]):
+            raise ProgramError(
+                "DSL: compare '[' must be followed by a tag or fb output"
+            )
         left = tokens[pos]
         pos += 1
         if pos >= len(tokens) or tokens[pos] not in _SYM_TO_OP:

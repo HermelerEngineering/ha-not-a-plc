@@ -198,8 +198,13 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
         image: dict[str, Any] = dict(self._last_inputs)
         if self.data:
             image.update(self.data)
-        # Expose each function block's output Q so the card can colour fb elements.
-        image.update(
-            {name: bool(st.get("q", False)) for name, st in self._fb_state.items()}
-        )
+        # Expose each function block's output Q (so the card can colour fb
+        # elements) plus its numeric outputs (timer ET, counter CV) under
+        # ``instance.ET`` / ``instance.CV`` (so the card can colour compares on them).
+        for name, st in self._fb_state.items():
+            image[name] = bool(st.get("q", False))
+            if "et" in st:
+                image[f"{name}.ET"] = st["et"]
+            if "cv" in st:
+                image[f"{name}.CV"] = st["cv"]
         return image

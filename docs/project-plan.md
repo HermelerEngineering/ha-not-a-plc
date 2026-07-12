@@ -243,10 +243,11 @@ Suggested order and the one design fork to resolve first:
      fake clock — this is exactly why `evaluate` takes `now`). Test with a fake
      clock advancing across the preset boundary (`TON` asserts `Q` flips exactly at
      `preset_ms`, `TOF` holds then drops, `TP` pulses for `preset_ms`).
-   - **`ET` (elapsed, a REAL output).** Decide how a program reads it. Options:
-     (a) expose fb REAL outputs in `state_image` under `instance.ET` and let a
-     `compare` reference `instance.ET`; (b) bind the timer's ET to a declared REAL
-     memory tag. Lean to (a). Until then, ship timers with only the boolean `Q`.
+   - **`ET` (elapsed, a REAL output) — done (v0.6.0), option (a).** A `compare`
+     operand may be `instance.ET`. The solver injects it into the scan `values`
+     after the block runs; the coordinator merges it into `state_image` (card
+     colours the compare, no card change); the DSL round-trips dotted operands.
+     Counter `CV` will surface via the same path.
 
 2. **Multi-input blocks — counters `CTU`/`CTD` and latches `SR`/`RS`. Decision
    made (2026-07-08): option A** — the *primary* input is the rung power reaching

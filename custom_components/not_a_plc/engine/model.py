@@ -43,6 +43,17 @@ TIMER_TYPES: frozenset[str] = frozenset({"TON", "TOF", "TP"})
 KNOWN_FB_TYPES: frozenset[str] = frozenset({"R_TRIG", "F_TRIG"}) | TIMER_TYPES
 
 
+def _fb_numeric_outputs(fb_type: str) -> frozenset[str]:
+    """The REAL outputs a function block exposes for use in a comparator.
+
+    Referenced as ``instance.<NAME>`` (e.g. ``t1.ET``). Timers expose the elapsed
+    time ``ET``; counters will expose their value ``CV`` the same way.
+    """
+    if fb_type in TIMER_TYPES:
+        return frozenset({"ET"})
+    return frozenset()
+
+
 # --- Helpers ----------------------------------------------------------------
 
 
@@ -508,11 +519,24 @@ class Program:
                 f"fb instance '{name}' clashes with a tag of the same name",
             )
 
-        def check_real(tag: str, where: str) -> None:
-            _require(tag in known, f"{where}: compare references unknown tag '{tag}'")
+        def check_real(ref: str, where: str) -> None:
+            # A compare operand is a REAL tag, or a function-block numeric output
+            # written ``instance.OUTPUT`` (e.g. ``t1.ET``).
+            if "." in ref:
+                inst, _, out = ref.partition(".")
+                _require(
+                    inst in self.fbs,
+                    f"{where}: compare references unknown fb instance '{inst}'",
+                )
+                _require(
+                    out in _fb_numeric_outputs(self.fbs[inst].type),
+                    f"{where}: fb '{inst}' has no numeric output '{out}'",
+                )
+                return
+            _require(ref in known, f"{where}: compare references unknown tag '{ref}'")
             _require(
-                self.tags[tag].type == "REAL",
-                f"{where}: compare tag '{tag}' must be REAL",
+                self.tags[ref].type == "REAL",
+                f"{where}: compare tag '{ref}' must be REAL",
             )
 
         def check_element(el: Element, where: str) -> None:
