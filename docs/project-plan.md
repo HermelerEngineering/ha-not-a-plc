@@ -137,28 +137,30 @@ Goal: the "online monitoring" feel, read-only. This builds the render pipeline t
 
 Done: the program "flows" live in a dashboard card; both repos ship as HACS custom repositories (`v0.0.1`). Phase 2 is frozen — new status-view work lands in phase 2A, not here.
 
-### Phase 2A — Status-view polish & multiple services (next up)
+### Phase 2A — Status-view polish & multiple services (done)
 
 Goal: finish the monitoring experience and let one HA run several independent
-programs — all managed from the UI. Pick this up before phase 3.
+programs — all managed from the UI.
 
-**Everything via the UI — no YAML/JSON.** The user configures services and picks
-what to view entirely through the HA interface; hand-editing YAML/JSON is never
-required. (Program *editing* itself is the phase-4 editor; here it's service
-lifecycle + the card.)
+**Everything via the UI — no YAML/JSON.** Services are configured, and the card's
+service chosen, entirely through the HA interface; hand-editing YAML/JSON is never
+required. (Program *editing* itself is the phase-4 editor.)
 
-- **Multiple services (config entry per instance).** Relax the single-instance
-  config flow so *Add integration → Not a PLC* creates another service, each with
-  its own device, program, entities and scan loop. Name each service in the flow.
-  Soft cap with a scan-load warning (tie to the §4 scan-time diagnostics), no hard
-  limit. The websocket API and card must target a service by `entry_id` (they
-  resolve "the single instance" today). See §9.
-  - *Dependency:* a per-service program only becomes meaningful once programs are
-    user-owned (currently every entry loads the bundled `demo.json`). Sequence this
-    with the editable-program-in-`.storage` work; until then services share the
-    demo program.
-- **Card: service selector.** A card option to choose which service (`entry_id`) it
-  renders, so each dashboard card can show a different program.
+- **Multiple services (config entry per instance) — done (integration v0.1.0).**
+  The config flow creates a named service each time (no single-instance limit),
+  choosing a bundled starter program and a scan-interval preset in the UI. Each
+  service is its own device (named after the service, so entities are namespaced
+  `binary_sensor.<service>_<tag>`), with its own program, entities and scan loop.
+  Advisory scan-load warning past a soft cap; no hard limit. The websocket API and
+  card target a service by `entry_id`.
+  - *Per-service programs are real now.* Each service owns its program canonically
+    in `.storage`, seeded once from the chosen starter. The phase-4 editor writes
+    to this same store; until then the program is the seeded starter (a bundled
+    example). A second example (`render_demo.json`) ships alongside the daylight demo.
+- **Card: service selector — done (card v0.1.0).** A `service` card option (the
+  service's `entry_id`), chosen in the card editor's Service dropdown (populated
+  from `not_a_plc/list_services`). The card re-subscribes when the selection
+  changes; omitting it uses the first running service.
 - **Card visual polish (done, shipped v0.0.2):** larger label fonts; the energised
   left stub now connects to the network's vertical rail (no gap); coils drawn as a
   parenthesis pair `( )` with `(S)`/`(R)`, not a circle. Further tweaks are gathered

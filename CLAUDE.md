@@ -122,30 +122,39 @@ Per `docs/project-plan.md` §5. **Backend (this repo):**
 tag runs each repo's release workflow (the card builds `not-a-plc-card.js` and
 attaches it as the release asset HACS installs). Owner: `HermelerEngineering`.
 
-## Next task — Phase 2A (status-view polish & multiple services)
+## Phase 2A is complete — multiple services + status-view polish
 
-Per `docs/project-plan.md` §5. Do this before phase 3. **Everything via the UI —
-no YAML/JSON** (standing user preference).
+Per `docs/project-plan.md` §5. **Everything via the UI — no YAML/JSON.**
 
-- **Multiple services:** relax the single-instance config flow so *Add integration*
-  creates another service (own device, program, entities, scan loop); soft cap +
-  scan-load warning. Websocket API + card must target a service by `entry_id`.
-- **Card service selector:** card option to choose which `entry_id` it renders.
-- **Card visual fixes (in `ha-not-a-plc-card` render layer):** larger label fonts;
-  connect the energised left stub to the network's vertical rail (no gap); draw
-  coils as `( )` (with `(S)`/`(R)`), not a circle.
-- **Liveness heartbeat:** top-right dot toggling green each scan (from `subscribe_state`).
+- **Multiple services (integration v0.1.0):** the config flow creates a named
+  service each time (no single-instance limit), picking a bundled starter program
+  and a scan-interval preset in the UI. Each service = own device (named after the
+  service, so entities are `binary_sensor.<service>_<tag>`), own program, entities
+  and scan loop. Advisory scan-load warning past `SERVICE_SOFT_CAP`, no hard limit.
+- **Per-service programs in `.storage`:** each entry seeds its canonical program
+  once from the chosen starter (`__init__._async_load_program`, key
+  `not_a_plc.program.<entry_id>`), cleaned up on removal. The phase-4 editor will
+  write to this same store. Second bundled example: `render_demo.json`.
+- **Websocket API targets by `entry_id`:** new `not_a_plc/list_services`;
+  `get_program`/`subscribe_state` take an optional `entry_id` (omitted = first).
+- **Card service selector (card v0.1.0):** `service` config option + a config
+  editor (`not-a-plc-card-editor`) dropdown from `list_services`; re-subscribes on
+  change. Plus the earlier polish (`( )` coils, rail-aligned stub, larger fonts,
+  client-side heartbeat).
 
-Then Phase 3 (extended function blocks): edge detect (`R_TRIG`/`F_TRIG`), timers
-(`TON`/`TOF`/`TP`), counters (`CTU`/`CTD`), comparators (`GT/…/NE` on `REAL`),
-`SR`/`RS`. Function blocks carry state → a separate instance declaration in the IR
-(`fbs`). Extend the golden corpus.
+## Next task — Phase 3 (extended function blocks)
 
-Carried over (not blocking phase 2A):
+Per `docs/project-plan.md` §5: edge detect (`R_TRIG`/`F_TRIG`), timers
+(`TON`/`TOF`/`TP`, counting on the injected clock delta), counters (`CTU`/`CTD`),
+comparators (`GT/…/NE` on `REAL` — the bridge to analog sensors), `SR`/`RS`.
+Function blocks carry state → a separate instance declaration in the IR (`fbs`).
+Extend the golden corpus (e.g. ventilation 15-min run-on via `TOF`).
 
-- The program is still loaded from the bundled `programs/demo.json`. A
-  user-editable program in `.storage` (canonical) with lossless YAML export is
-  still pending — only *retained bits* use `.storage` so far, not the program.
+Carried over (not blocking phase 3):
+
+- Programs are per-service in `.storage` but only *seeded* from bundled starters;
+  in-place *editing* (the graphical editor, phase 4) and lossless YAML export are
+  still pending. The `temp` tag kind (§9) is not in `engine/model.py` yet.
 - A commandable `switch` coil variant for commissioning is still optional.
 
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
