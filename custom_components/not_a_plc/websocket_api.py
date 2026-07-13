@@ -52,6 +52,19 @@ def async_register(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_save_program_text)
 
 
+def _significant_state(image: dict[str, Any]) -> dict[str, Any]:
+    """The part of the image that decides whether to push an update.
+
+    Excludes continuously-varying REAL outputs — a timer's elapsed time
+    ``instance.ET`` climbs every scan, which would otherwise defeat the on-change
+    gate and flood the connection while any timer runs. The pushed payload still
+    carries ET (a snapshot at each push); it just no longer triggers a push on its
+    own. Booleans, coil/memory bits, inputs and counter ``CV`` (a step function)
+    still push on change.
+    """
+    return {k: v for k, v in image.items() if not k.endswith(".ET")}
+
+
 def _resolve_entry_id(hass: HomeAssistant, entry_id: str | None = None) -> str | None:
     """Return a running service's entry_id (the given one, or the first)."""
     entries = hass.data.get(DOMAIN)
@@ -161,17 +174,19 @@ def ws_subscribe_state(
         connection.send_error(msg["id"], ERR_NOT_LOADED, "Not-a-PLC is not set up")
         return
 
-    # Last image sent on *this* subscription. ``None`` (sentinel) is distinct from
-    # an empty/false-valued image, so the first push always goes out.
+    # Significant part of the last image sent on *this* subscription. ``None``
+    # (sentinel) is distinct from an empty image, so the first push always goes out.
     last_sent: dict[str, Any] | None = None
 
     @callback
     def forward_state() -> None:
         nonlocal last_sent
         image = coordinator.state_image()
-        if image == last_sent:
+        significant = _significant_state(image)
+        if significant == last_sent:
             return
-        last_sent = image
+        last_sent = significant
+        # Send the full image (with ET) — only its *significant* part gates a push.
         connection.send_message(
             websocket_api.event_message(msg["id"], {"state": image})
         )

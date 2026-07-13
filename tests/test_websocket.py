@@ -26,12 +26,20 @@ from custom_components.not_a_plc.engine import Program, program_from_text
 from custom_components.not_a_plc.websocket_api import (
     ERR_INVALID_PROGRAM,
     ERR_NOT_LOADED,
+    _significant_state,
     ws_get_program,
     ws_get_program_text,
     ws_list_services,
     ws_save_program,
     ws_subscribe_state,
 )
+
+
+def test_significant_state_drops_timer_et() -> None:
+    image = {"run": True, "done": False, "t1.ET": 1916.05, "c1.CV": 3}
+    # A running timer's ET must not gate a push; everything else does.
+    assert _significant_state(image) == {"run": True, "done": False, "c1.CV": 3}
+
 
 # A minimal program: one BOOL input drives one coil (= mode).
 _PROGRAM = {

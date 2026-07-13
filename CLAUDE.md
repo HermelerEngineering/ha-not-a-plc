@@ -215,20 +215,20 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
 - **4.2 (next)** tag management via HA pickers (§3a). **4.3** element editing (forms).
 - **4.4** structure + the drag-drop grid canvas. **4.5** validation UX + YAML + polish.
 
-### Known issues to fix next (reported after 4.1; not yet fixed)
+### Known issues
 
-- **Websocket flood returns while a timer runs (regression from v0.6.0; HIGH).**
-  v0.6.0 merged fb numeric outputs (`instance.ET` / `instance.CV`) into
-  `coordinator.state_image()`. Timer **`ET` increments every scan** while running,
-  so the `subscribe_state` on-change check (dict compare) sees a change every scan
-  → pushes at the scan rate again → HA drops slow/backgrounded consumers
-  ("Client unable to keep up… 4096 pending messages"). Counter `CV` is fine (a step
-  function; changes only on a count edge). Fix direction (see plan §5 phase 2A
-  "streaming strategy"): do not stream continuously-varying REALs raw — options:
-  (a) quantise `ET` coarsely / drop it from the stream (compares on `t1.ET` then
-  lose live colour — acceptable), and/or (b) rate-cap + coalesce the state stream
-  (bounded push rate regardless of scan cadence). Consider also sending per-tag
-  diffs. Keep the on-change gate for the boolean/step values.
+- **Websocket flood while a timer runs — fixed (v0.7.4).** `subscribe_state` now
+  gates a push on the *significant* state (`_significant_state`, which drops
+  `instance.ET` keys), so a timer's ever-climbing ET no longer pushes every scan.
+  The payload still carries ET (a snapshot at each push). Booleans, coil/memory,
+  inputs and counter `CV` (a step function) still push on change → a timer reaching
+  its preset or resetting (a `Q`/coil change) still updates live. *Caveat:* a
+  compare that reads `t1.ET` only recolours when some other value changes; and the
+  displayed ET value is a snapshot, not continuous. Acceptable for now.
+- **R_TRIG "not firing" — not a bug.** Verified by `tests/test_engine_chain.py`
+  (RS → R_TRIG → TP): the edge pulses for one scan and the TP starts. What looked
+  broken was the flood above making the card lag/drop the brief pulse; the flood
+  fix resolves it.
 - **Double custom-element registration (card repo).** With the panel installed, the
   bundle loads twice (panel `module_url` + the Lovelace card resource), and the Lit
   `@customElement` decorator calls `customElements.define` unconditionally →
