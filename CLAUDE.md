@@ -225,9 +225,18 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     covers coil+memory) and never persisted; it still surfaces in `state_image` via
     `self.data` so the card can colour it. Schema + validation updated (`retain` is
     now rejected on non-memory tags). Tests: `tests/test_engine_temp.py`.
-  - **Still to do in 4.2 (card):** add/remove tags, edit kind/type + type inference
-    (§3a: binary_sensor/input_boolean → BOOL, numeric sensor → REAL), coil `writes`
-    target, and offering the `temp` kind in the tag editor.
+  - **Tag management — done (card v0.5.0).** The tag table is now a full editor,
+    backed by pure unit-tested helpers in the card's `src/tags.ts`: rename a tag
+    (`renameTag` rewrites every reference across the IR so it stays valid), change
+    kind (input/coil/memory/**temp**; `setKind` drops fields that no longer apply),
+    change type (BOOL/REAL/TIME) with entity-domain **type inference** on input
+    binding (§3a: binary_sensor/input_boolean → BOOL, numeric sensor → REAL,
+    overridable), a per-kind binding column (input → entity picker, coil → optional
+    `writes` target, memory → `retain` checkbox), add a default tag, and delete
+    (blocked while referenced via `isTagReferenced`). Saves via `save_program`.
+  - **Still to do in 4.2:** nothing blocking — 4.2 is essentially complete. Next is
+    **4.3** (structured element editing: forms to add/edit contacts, coils, compares
+    and fb instances within a rung).
 - **4.3** element editing (forms). **4.4** structure + the drag-drop grid canvas.
   **4.5** validation UX + YAML + polish.
 
