@@ -242,6 +242,27 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   `src/elements.ts` of pure IR-edit helpers. **4.4** structure + the drag-drop grid
   canvas. **4.5** validation UX + YAML + polish.
 
+### Requested enhancements (documented, not yet implemented)
+
+- **Colour each contact by its own conduct state, not just by power flow**
+  (requested 2026-07-13, card). Today a series chain only lights up as far as power
+  actually reaches from the left rail: the renderer colours element *symbols* by
+  `live` (power reached this element AND it conducts), so a false first contact
+  leaves every later contact grey even when those later conditions are individually
+  true. Desired: colour a contact's **symbol** by its own `conducts` state (its
+  condition is currently satisfied — NO with tag true, NC with tag false), so you can
+  see at a glance *which conditions are still missing* to energise the coil — while
+  the **wires/rails** between elements keep following actual power flow (`live`), so
+  a broken contact still visibly stops the line and nothing downstream of the break
+  lights its connecting wire. Net: symbols show per-condition truth; the power line
+  shows where flow stops. Applies to contacts (and by extension compares); coil
+  energisation and the rung result stay on `live`/power. Implementation is mostly in
+  the card's `src/render.ts` — `computePowerFlow` already returns both `conducts` and
+  `live` per element (see `flow.elements.get(el)` → `{conducts, live}` in
+  `power-flow.ts` / its test), so this is a render-colour change, not a model change.
+  Add a vitest/visual check that a false-then-true series colours the later symbol but
+  not the wire.
+
 ### Known issues
 
 - **Websocket flood while a timer runs — fixed (v0.7.4).** `subscribe_state` now
@@ -286,6 +307,10 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
 
 Carried over (fold into a later phase):
 
+- **New brand icons** (`custom_components/not_a_plc/brand/{icon,icon@2x,logo}.png`)
+  were replaced by the user 2026-07-13 but are **uncommitted**; they need a commit
+  and a new integration release before HACS shows them. (Note `logo.png` is currently
+  identical to `icon@2x.png` — HACS brands ideally wants a wider logo, minor.)
 - A commandable `switch` coil variant for commissioning is still optional.
 - The double custom-element `define` log noise (above) — a quick `defineOnce` guard
   when convenient; harmless.
