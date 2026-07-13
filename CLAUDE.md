@@ -217,6 +217,18 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
 
 ### Known issues to fix next (reported after 4.1; not yet fixed)
 
+- **Websocket flood returns while a timer runs (regression from v0.6.0; HIGH).**
+  v0.6.0 merged fb numeric outputs (`instance.ET` / `instance.CV`) into
+  `coordinator.state_image()`. Timer **`ET` increments every scan** while running,
+  so the `subscribe_state` on-change check (dict compare) sees a change every scan
+  → pushes at the scan rate again → HA drops slow/backgrounded consumers
+  ("Client unable to keep up… 4096 pending messages"). Counter `CV` is fine (a step
+  function; changes only on a count edge). Fix direction (see plan §5 phase 2A
+  "streaming strategy"): do not stream continuously-varying REALs raw — options:
+  (a) quantise `ET` coarsely / drop it from the stream (compares on `t1.ET` then
+  lose live colour — acceptable), and/or (b) rate-cap + coalesce the state stream
+  (bounded push rate regardless of scan cadence). Consider also sending per-tag
+  diffs. Keep the on-change gate for the boolean/step values.
 - **Double custom-element registration (card repo).** With the panel installed, the
   bundle loads twice (panel `module_url` + the Lovelace card resource), and the Lit
   `@customElement` decorator calls `customElements.define` unconditionally →
