@@ -212,9 +212,10 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   service selector, a structural program preview, and a **DSL text editor + Save**
   (`get_program_text` → edit → `save_program_text`). Already usable — edit in the
   UI, no `.storage` fiddling. Structured/form editing is 4.2+.
-- **4.2 in progress (card v0.4.1, int v0.7.5):** the panel now shows a **live**
-  preview (subscribes to `subscribe_state`), and a **tag table** where each `input`
-  tag's source is bound via a self-contained native `<input>` + `<datalist>` picker
+- **4.2 — done, validated in HA (card v0.5.0, int v0.7.5).** The panel shows a
+  **live** preview (subscribes to `subscribe_state`), and a **tag table** where each
+  `input` tag's source is bound via a self-contained native `<input>` + `<datalist>`
+  picker
   (`ha-entity-picker` is a lazy-loaded element not reliably defined in a custom
   panel; the datalist is populated from `hass.states`, filtered to REAL → numeric
   domains / BOOL → boolean domains) with a Save (`save_program`).
@@ -234,11 +235,12 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     overridable), a per-kind binding column (input → entity picker, coil → optional
     `writes` target, memory → `retain` checkbox), add a default tag, and delete
     (blocked while referenced via `isTagReferenced`). Saves via `save_program`.
-  - **Still to do in 4.2:** nothing blocking — 4.2 is essentially complete. Next is
-    **4.3** (structured element editing: forms to add/edit contacts, coils, compares
-    and fb instances within a rung).
-- **4.3** element editing (forms). **4.4** structure + the drag-drop grid canvas.
-  **4.5** validation UX + YAML + polish.
+- **4.3 — next (not started).** Structured element editing: forms to add/edit/remove
+  contacts, coils, compares and fb instances within a rung (add/remove rungs and
+  networks too). Reuse the same `save_program` path and the pure-helper + vitest
+  pattern established for tags (`src/tags.ts` / `test/tags.test.ts`) — e.g. an
+  `src/elements.ts` of pure IR-edit helpers. **4.4** structure + the drag-drop grid
+  canvas. **4.5** validation UX + YAML + polish.
 
 ### Known issues
 
@@ -263,7 +265,12 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   the box (was over the edge).
 - **Editor preview was not live — fixed (card v0.4.0).** The panel now subscribes
   to `subscribe_state` and colours its preview live (was empty/initial state).
-- **Double custom-element registration (card repo).** With the panel installed, the
+- **Editor tag table was not editable — fixed (card v0.4.1).** The binding cells
+  used HA's `ha-entity-picker`, a lazy-loaded element not reliably defined inside a
+  custom panel, so they rendered but couldn't be edited. Replaced with a
+  self-contained native `<input list=…>` + `<datalist>` from `hass.states`. Full tag
+  management followed in v0.5.0 (see 4.2 above). Validated in HA.
+- **Double custom-element registration (card repo) — still open.** With the panel installed, the
   bundle loads twice (panel `module_url` + the Lovelace card resource), and the Lit
   `@customElement` decorator calls `customElements.define` unconditionally →
   `Failed to execute 'define'… "not-a-plc-card" has already been used`. Fix: guard
@@ -271,14 +278,17 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   `@customElement("x")` with a manual `if (!customElements.get("x")) customElements.define("x", C)`
   (or a small `defineOnce` helper) for `not-a-plc-card`, `not-a-plc-card-editor`,
   and `not-a-plc-panel`. Harmless (the first define wins) but noisy in the log.
-- **User has additional feedback** on things that aren't quite right yet — collect
-  and triage these at the start of the next session, before/with 4.2.
+- **User feedback from the phase-2A/3 round — all addressed.** fb output colouring
+  (card v0.3.4), ET no longer floods the websocket (v0.7.4), compares/counters show
+  their live value, the editor preview is live (v0.4.0) and the tag table is editable
+  (v0.4.1) with full tag management (v0.5.0). Nothing outstanding from that round;
+  the only open known issue is the double-define log noise above.
 
-Carried over (fold into phase 4):
+Carried over (fold into a later phase):
 
-- The `temp` tag kind (§9) is now in `engine/model.py` (int v0.7.5); what remains is
-  exposing it in the card's tag editor when tag management (4.2) lands.
 - A commandable `switch` coil variant for commissioning is still optional.
+- The double custom-element `define` log noise (above) — a quick `defineOnce` guard
+  when convenient; harmless.
 
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
 
