@@ -212,8 +212,13 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   service selector, a structural program preview, and a **DSL text editor + Save**
   (`get_program_text` → edit → `save_program_text`). Already usable — edit in the
   UI, no `.storage` fiddling. Structured/form editing is 4.2+.
-- **4.2 (next)** tag management via HA pickers (§3a). **4.3** element editing (forms).
-- **4.4** structure + the drag-drop grid canvas. **4.5** validation UX + YAML + polish.
+- **4.2 in progress (card v0.4.0):** the panel now shows a **live** preview
+  (subscribes to `subscribe_state`), and a **tag table** where each `input` tag's
+  source is bound via `ha-entity-picker` (REAL → numeric domains) with a Save
+  (`save_program`). **Still to do in 4.2:** add/remove tags, edit kind/type + type
+  inference (§3a), coil `writes` target, and the `temp` tag kind (§9).
+- **4.3** element editing (forms). **4.4** structure + the drag-drop grid canvas.
+  **4.5** validation UX + YAML + polish.
 
 ### Known issues
 
@@ -236,6 +241,8 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   (A 1-scan `R_TRIG` pulse is still a brief flash — that is correct; a minimum
   visual hold could be added later if wanted.) Also: counter `CV` label moved below
   the box (was over the edge).
+- **Editor preview was not live — fixed (card v0.4.0).** The panel now subscribes
+  to `subscribe_state` and colours its preview live (was empty/initial state).
 - **Double custom-element registration (card repo).** With the panel installed, the
   bundle loads twice (panel `module_url` + the Lovelace card resource), and the Lit
   `@customElement` decorator calls `customElements.define` unconditionally →
