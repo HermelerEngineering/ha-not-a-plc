@@ -242,27 +242,6 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   `src/elements.ts` of pure IR-edit helpers. **4.4** structure + the drag-drop grid
   canvas. **4.5** validation UX + YAML + polish.
 
-### Requested enhancements (documented, not yet implemented)
-
-- **Colour each contact by its own conduct state, not just by power flow**
-  (requested 2026-07-13, card). Today a series chain only lights up as far as power
-  actually reaches from the left rail: the renderer colours element *symbols* by
-  `live` (power reached this element AND it conducts), so a false first contact
-  leaves every later contact grey even when those later conditions are individually
-  true. Desired: colour a contact's **symbol** by its own `conducts` state (its
-  condition is currently satisfied — NO with tag true, NC with tag false), so you can
-  see at a glance *which conditions are still missing* to energise the coil — while
-  the **wires/rails** between elements keep following actual power flow (`live`), so
-  a broken contact still visibly stops the line and nothing downstream of the break
-  lights its connecting wire. Net: symbols show per-condition truth; the power line
-  shows where flow stops. Applies to contacts (and by extension compares); coil
-  energisation and the rung result stay on `live`/power. Implementation is mostly in
-  the card's `src/render.ts` — `computePowerFlow` already returns both `conducts` and
-  `live` per element (see `flow.elements.get(el)` → `{conducts, live}` in
-  `power-flow.ts` / its test), so this is a render-colour change, not a model change.
-  Add a vitest/visual check that a false-then-true series colours the later symbol but
-  not the wire.
-
 ### Known issues
 
 - **Websocket flood while a timer runs — fixed (v0.7.4).** `subscribe_state` now
@@ -291,6 +270,16 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   custom panel, so they rendered but couldn't be edited. Replaced with a
   self-contained native `<input list=…>` + `<datalist>` from `hass.states`. Full tag
   management followed in v0.5.0 (see 4.2 above). Validated in HA.
+- **Contacts only coloured as far as power reached — fixed (card v0.5.1).** In a
+  series chain the renderer coloured element *symbols* by `live` (power reached AND
+  conducts), so a false first contact left every later contact grey even when those
+  conditions were individually true. Now condition *symbols* (contacts, compares) are
+  coloured by their own `conducts` state, so you can see which conditions are already
+  satisfied vs. still missing to energise the coil; the *wires* between elements still
+  follow actual power flow (`live`), so the line visibly stops at the break and
+  nothing downstream of it lights its connecting wire. Render-only change in
+  `render.ts` (`drawContact`/`drawCompare`); `computePowerFlow` already exposed both
+  `conducts` and `live` per element. Requested 2026-07-13.
 - **Double custom-element registration (card repo) — still open.** With the panel installed, the
   bundle loads twice (panel `module_url` + the Lovelace card resource), and the Lit
   `@customElement` decorator calls `customElements.define` unconditionally →
