@@ -226,9 +226,16 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   compare that reads `t1.ET` only recolours when some other value changes; and the
   displayed ET value is a snapshot, not continuous. Acceptable for now.
 - **R_TRIG "not firing" — not a bug.** Verified by `tests/test_engine_chain.py`
-  (RS → R_TRIG → TP): the edge pulses for one scan and the TP starts. What looked
-  broken was the flood above making the card lag/drop the brief pulse; the flood
-  fix resolves it.
+  (RS → R_TRIG → TP): the edge pulses for one scan and the TP starts.
+- **Function-block output colouring — fixed (card v0.3.4).** The card's power-flow
+  coloured an fb as `poweredIn && Q`, so once the input pulse ended (e.g. a 1-scan
+  `R_TRIG`), a still-running `TP`, a set `SR`/`RS`, or a reached `CTU` went grey —
+  even though the engine keeps the rung power at `Q` (which outlives the input).
+  Fix: `power-flow.ts` `flowElement` now uses `live = conducts` (i.e. `Q`) for fb
+  elements, matching the engine, so blocks and everything downstream follow `Q`.
+  (A 1-scan `R_TRIG` pulse is still a brief flash — that is correct; a minimum
+  visual hold could be added later if wanted.) Also: counter `CV` label moved below
+  the box (was over the edge).
 - **Double custom-element registration (card repo).** With the panel installed, the
   bundle loads twice (panel `module_url` + the Lovelace card resource), and the Lit
   `@customElement` decorator calls `customElements.define` unconditionally →
