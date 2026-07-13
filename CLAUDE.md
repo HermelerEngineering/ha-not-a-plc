@@ -212,11 +212,22 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   service selector, a structural program preview, and a **DSL text editor + Save**
   (`get_program_text` → edit → `save_program_text`). Already usable — edit in the
   UI, no `.storage` fiddling. Structured/form editing is 4.2+.
-- **4.2 in progress (card v0.4.0):** the panel now shows a **live** preview
-  (subscribes to `subscribe_state`), and a **tag table** where each `input` tag's
-  source is bound via `ha-entity-picker` (REAL → numeric domains) with a Save
-  (`save_program`). **Still to do in 4.2:** add/remove tags, edit kind/type + type
-  inference (§3a), coil `writes` target, and the `temp` tag kind (§9).
+- **4.2 in progress (card v0.4.1, int v0.7.5):** the panel now shows a **live**
+  preview (subscribes to `subscribe_state`), and a **tag table** where each `input`
+  tag's source is bound via a self-contained native `<input>` + `<datalist>` picker
+  (`ha-entity-picker` is a lazy-loaded element not reliably defined in a custom
+  panel; the datalist is populated from `hass.states`, filtered to REAL → numeric
+  domains / BOOL → boolean domains) with a Save (`save_program`).
+  - **`temp` tag kind — done in the engine (int v0.7.5).** `engine/model.py` now has
+    all four kinds (`input`/`coil`/`memory`/`temp`). A `temp` bit is scratch: it
+    resets to `False` every scan (never seeded from `previous` in `scan.py`), is a
+    valid coil write target, is never published as an entity (binary_sensor only
+    covers coil+memory) and never persisted; it still surfaces in `state_image` via
+    `self.data` so the card can colour it. Schema + validation updated (`retain` is
+    now rejected on non-memory tags). Tests: `tests/test_engine_temp.py`.
+  - **Still to do in 4.2 (card):** add/remove tags, edit kind/type + type inference
+    (§3a: binary_sensor/input_boolean → BOOL, numeric sensor → REAL), coil `writes`
+    target, and offering the `temp` kind in the tag editor.
 - **4.3** element editing (forms). **4.4** structure + the drag-drop grid canvas.
   **4.5** validation UX + YAML + polish.
 
@@ -256,16 +267,16 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
 
 Carried over (fold into phase 4):
 
-- The `temp` tag kind (§9) is not in `engine/model.py` yet — add when tag management
-  (4.2) lands.
+- The `temp` tag kind (§9) is now in `engine/model.py` (int v0.7.5); what remains is
+  exposing it in the card's tag editor when tag management (4.2) lands.
 - A commandable `switch` coil variant for commissioning is still optional.
 
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
 
 - **Tag model → four kinds.** `input`, `coil`, `memory` (retentive across scans;
   `retain` adds across-restart), `temp` (scratch, reset each scan). "static" = a
-  non-retained `memory`. Types stay `BOOL`/`REAL`/`TIME`. (`engine/model.py` still
-  has three kinds; `temp` is added when the model work lands.)
+  non-retained `memory`. Types stay `BOOL`/`REAL`/`TIME`. (`engine/model.py` has all
+  four kinds as of int v0.7.5; `temp` resets each scan and is never published/persisted.)
 - **Multiple instances.** One config entry per Not a PLC "service" (own device,
   program, entities, scan loop); soft cap with a scan-load warning, no hard limit.
   This supersedes the current **single-instance** `config_flow.py` — do not

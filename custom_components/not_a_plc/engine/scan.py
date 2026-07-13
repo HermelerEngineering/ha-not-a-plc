@@ -325,12 +325,16 @@ def evaluate(
     one wins (deterministic, matching a real scan order): an ``R`` after an ``S``
     on the same tag makes reset dominant, and vice versa.
     """
+    # Coil and memory bits are retentive: they start from the previous scan (so
+    # S/R latches and unwritten coils carry). Temp bits are scratch — they always
+    # start False each scan, never carrying across, and are never persisted.
     outputs: dict[str, bool] = {name: False for name in program.coil_tags()}
     outputs.update({name: False for name in program.memory_tags()})
     if previous:
-        for name in outputs:
+        for name in list(outputs):
             if name in previous:
                 outputs[name] = bool(previous[name])
+    outputs.update({name: False for name in program.temp_tags()})
 
     # Contacts solve against inputs *and* the coil/memory bits computed so far.
     # Bits set by an earlier rung are visible to a later one within the same scan

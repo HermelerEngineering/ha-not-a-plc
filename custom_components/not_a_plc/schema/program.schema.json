@@ -27,7 +27,7 @@
       "required": ["kind"],
       "additionalProperties": false,
       "properties": {
-        "kind": { "enum": ["input", "coil", "memory"] },
+        "kind": { "enum": ["input", "coil", "memory", "temp"] },
         "type": { "enum": ["BOOL", "REAL", "TIME"] },
         "source": { "type": "string" },
         "retain": { "type": "boolean" },

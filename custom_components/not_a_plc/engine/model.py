@@ -25,7 +25,7 @@ from .errors import ProgramError
 
 # --- Type aliases -----------------------------------------------------------
 
-TagKind = Literal["input", "coil", "memory"]
+TagKind = Literal["input", "coil", "memory", "temp"]
 TagType = Literal["BOOL", "REAL", "TIME"]
 ContactMode = Literal["NO", "NC"]
 CoilMode = Literal["=", "S", "R"]
@@ -141,7 +141,10 @@ class Tag:
     def from_dict(cls, name: str, data: dict[str, Any]) -> Tag:
         where = f"tag '{name}'"
         kind = _get(data, "kind", where)
-        _require(kind in ("input", "coil", "memory"), f"{where}: invalid kind '{kind}'")
+        _require(
+            kind in ("input", "coil", "memory", "temp"),
+            f"{where}: invalid kind '{kind}'",
+        )
 
         type_ = data.get("type", "BOOL")
         _require(type_ in ("BOOL", "REAL", "TIME"), f"{where}: invalid type '{type_}'")
@@ -183,6 +186,11 @@ class Tag:
             )
         if kind != "coil":
             _require(writes is None, f"{where}: only coil tags may have 'writes'")
+        if kind != "memory":
+            _require(
+                not data.get("retain", False),
+                f"{where}: only memory tags may set 'retain'",
+            )
 
         return cls(
             name=name,
@@ -623,7 +631,7 @@ class Program:
                     )
                     kind = self.tags[c.tag].kind
                     _require(
-                        kind in ("coil", "memory"),
+                        kind in ("coil", "memory", "temp"),
                         f"network '{n.id}' rung '{r.id}': coil writes to "
                         f"'{c.tag}' which is a '{kind}' tag",
                     )
@@ -638,3 +646,6 @@ class Program:
 
     def memory_tags(self) -> dict[str, Tag]:
         return {name: t for name, t in self.tags.items() if t.kind == "memory"}
+
+    def temp_tags(self) -> dict[str, Tag]:
+        return {name: t for name, t in self.tags.items() if t.kind == "temp"}
