@@ -235,7 +235,7 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     overridable), a per-kind binding column (input → entity picker, coil → optional
     `writes` target, memory → `retain` checkbox), add a default tag, and delete
     (blocked while referenced via `isTagReferenced`). Saves via `save_program`.
-- **4.3 — in progress (card v0.6.0).** Structured element editing. Pure IR-edit
+- **4.3 — in progress (card v0.7.0).** Structured element editing. Pure IR-edit
   helpers in the card's `src/elements.ts` (immutable, index-addressed by
   network/rung/element/coil; unit-tested in `test/elements.test.ts`): add/remove/move
   networks and rungs (+ titles), add/remove/move/update top-level series elements and
@@ -243,14 +243,23 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   panel gained a **"Program" structure editor** (`_renderStructure` etc.): forms to
   edit networks → rungs → series (contact tag+mode, compare left/op/right, fb
   instance) and coils (tag+mode), all saving via `save_program`. The live preview
-  updates as you edit.
+  updates as you edit. Structure `<select>`s bind `.value` (not just `?selected`) so
+  a reordered element keeps its shown value; multiple coils stack downward from the
+  baseline (first coil on the line) joined by a vertical bus (fixed in v0.6.1/v0.7.0).
+  - **Function-block instances — done (card v0.7.0).** Pure helpers in the card's
+    `src/fbs.ts` (unit-tested, `test/fbs.test.ts`): `addFb`/`removeFb`/`renameFb`
+    (rewrites every `fb` reference and `instance.ET`/`.CV` compare operand),
+    `setFbType` (resets params to the type's defaults), `setFbParam`, `isFbReferenced`,
+    plus `FB_TYPES` and a per-type `fbFields` spec (timer `preset_ms`; counter `pv` +
+    `reset`/`load` tag; latch `reset` tag; edges none). Panel **"Function blocks"**
+    section renders a row per instance (name, type, typed param inputs, delete —
+    blocked while referenced). Now timers/counters/latches/edges are fully usable
+    from the UI (declare the instance here, then add an `fb` element referencing it).
   - **Still to do in 4.3:** editing the *contents* of a branch / NOT group (nested
-    series) — shown read-only with a "edit via DSL" note for now; creating/editing
-    **fb instances** (declare a new `TON`/`CTU`/… with its params — today you can only
-    reference an existing instance); and reordering across the branch nesting. A new
-    rung starts empty (`series:[]`, `coils:[]`) and only becomes *saveable* once it has
-    ≥1 element and ≥1 coil referencing existing tags — save-time validation reports
-    this; consider friendlier inline validation in 4.5.
+    series) — shown read-only with an "edit via DSL" note for now. A new rung starts
+    empty (`series:[]`, `coils:[]`) and only becomes *saveable* once it has ≥1 element
+    and ≥1 coil referencing existing tags — save-time validation reports this;
+    consider friendlier inline validation in 4.5.
 - **4.4** structure + the drag-drop grid canvas. **4.5** validation UX + YAML + polish.
 
 ### Known issues
