@@ -281,8 +281,20 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     the old `{"not":[…]}` shape fails to load — none of the bundled programs/goldens
     used NOT, so only unit tests needed updating; a user's hand-made NOT program in
     `.storage` would need re-authoring (acceptable pre-1.0).
-- **4.4 — next.** The drag-drop grid canvas (built on the render/power-flow layer and
-  the pure `elements.ts` edit helpers). **4.5** validation UX + YAML + polish.
+- **4.4 — in progress (card v0.10.0).** Interaction model **decided 2026-07-14:
+  click-to-place first, true drag gestures later** (building a full HTML5 drag-drop
+  blind = too many release/test cycles). First increment: a **click-to-place canvas**
+  in the panel (opt-in `<details open>` alongside the proven forms). Arm a palette
+  tool (contact NO/NC, compare, OR-branch, NOT, FB, coil), then click a ＋ slot to
+  insert that element/coil at that position; click a tile to select it and edit it in
+  an inspector (reuses `_renderSeriesElement`/`_renderCoilEditor`, so a selected branch
+  opens the recursive form editor). Pure, unit-tested support: `insertElementIn`/
+  `insertCoil` in `elements.ts` and `elementLabel` in the new `src/canvas.ts`
+  (`test/canvas.test.ts`). **Still to do in 4.4:** render branch internals inline on
+  the canvas (today a branch is one tile, edited via the inspector); true pointer-drag
+  to place/reorder; selection is index-based so it can go stale after a delete/move
+  (inspector then just closes — acceptable for the beta). **4.5** validation UX + YAML
+  + polish.
 
 ### Known issues
 
