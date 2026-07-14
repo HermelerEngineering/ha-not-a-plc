@@ -235,12 +235,23 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     overridable), a per-kind binding column (input → entity picker, coil → optional
     `writes` target, memory → `retain` checkbox), add a default tag, and delete
     (blocked while referenced via `isTagReferenced`). Saves via `save_program`.
-- **4.3 — next (not started).** Structured element editing: forms to add/edit/remove
-  contacts, coils, compares and fb instances within a rung (add/remove rungs and
-  networks too). Reuse the same `save_program` path and the pure-helper + vitest
-  pattern established for tags (`src/tags.ts` / `test/tags.test.ts`) — e.g. an
-  `src/elements.ts` of pure IR-edit helpers. **4.4** structure + the drag-drop grid
-  canvas. **4.5** validation UX + YAML + polish.
+- **4.3 — in progress (card v0.6.0).** Structured element editing. Pure IR-edit
+  helpers in the card's `src/elements.ts` (immutable, index-addressed by
+  network/rung/element/coil; unit-tested in `test/elements.test.ts`): add/remove/move
+  networks and rungs (+ titles), add/remove/move/update top-level series elements and
+  coils, with constructors (`newContact`/`newCompare`/`newFbRef`/`newCoil`/…). The
+  panel gained a **"Program" structure editor** (`_renderStructure` etc.): forms to
+  edit networks → rungs → series (contact tag+mode, compare left/op/right, fb
+  instance) and coils (tag+mode), all saving via `save_program`. The live preview
+  updates as you edit.
+  - **Still to do in 4.3:** editing the *contents* of a branch / NOT group (nested
+    series) — shown read-only with a "edit via DSL" note for now; creating/editing
+    **fb instances** (declare a new `TON`/`CTU`/… with its params — today you can only
+    reference an existing instance); and reordering across the branch nesting. A new
+    rung starts empty (`series:[]`, `coils:[]`) and only becomes *saveable* once it has
+    ≥1 element and ≥1 coil referencing existing tags — save-time validation reports
+    this; consider friendlier inline validation in 4.5.
+- **4.4** structure + the drag-drop grid canvas. **4.5** validation UX + YAML + polish.
 
 ### Known issues
 
