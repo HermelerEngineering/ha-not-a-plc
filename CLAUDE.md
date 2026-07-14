@@ -281,20 +281,28 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     the old `{"not":[…]}` shape fails to load — none of the bundled programs/goldens
     used NOT, so only unit tests needed updating; a user's hand-made NOT program in
     `.storage` would need re-authoring (acceptable pre-1.0).
-- **4.4 — in progress (card v0.10.0).** Interaction model **decided 2026-07-14:
-  click-to-place first, true drag gestures later** (building a full HTML5 drag-drop
-  blind = too many release/test cycles). First increment: a **click-to-place canvas**
-  in the panel (opt-in `<details open>` alongside the proven forms). Arm a palette
-  tool (contact NO/NC, compare, OR-branch, NOT, FB, coil), then click a ＋ slot to
-  insert that element/coil at that position; click a tile to select it and edit it in
-  an inspector (reuses `_renderSeriesElement`/`_renderCoilEditor`, so a selected branch
-  opens the recursive form editor). Pure, unit-tested support: `insertElementIn`/
-  `insertCoil` in `elements.ts` and `elementLabel` in the new `src/canvas.ts`
-  (`test/canvas.test.ts`). **Still to do in 4.4:** render branch internals inline on
-  the canvas (today a branch is one tile, edited via the inspector); true pointer-drag
-  to place/reorder; selection is index-based so it can go stale after a delete/move
-  (inspector then just closes — acceptable for the beta). **4.5** validation UX + YAML
-  + polish.
+- **4.4 — in progress.** Interaction model **decided 2026-07-14: click-to-place
+  first, then drag** — and **route B→C confirmed 2026-07-15**: the editing surface is
+  the *live ladder view itself* (not a separate tile grid), reached in stages —
+  **B** click-on-live-view, **C** pointer-drag on top.
+  - **Stage A (card v0.10.0) — superseded.** A separate DOM tile-based click-to-place
+    canvas; proved the pipeline. Its pure helpers carried forward; the tile UI was
+    replaced in stage B.
+  - **Stage B — done (card v0.11.0).** The canvas is now the **real SVG ladder** with
+    an interaction overlay. `render.ts` gained an optional `CanvasEdit` config threaded
+    through `renderNetwork`→`renderRung`; when present it draws transparent hit-targets
+    over the ladder — element/coil **select boxes** and (when a tool is armed) **insert
+    slots** — wired to callbacks. The read-only card passes no `edit`, so its render is
+    unchanged (overlay guarded by `if (edit)`, single geometry source = the same
+    `measureElement`/`colX`/`rowY`/coil math). Panel: arm a palette tool → click a ＋
+    slot to `insertElementIn`/`insertCoil`; in select mode click an element/coil →
+    inspector (reuses `_renderSeriesElement`/`_renderCoilEditor`, so a branch opens the
+    recursive form editor). `insertElementIn`/`insertCoil` (elements.ts) + `elementLabel`
+    (canvas.ts) are unit-tested. **Still to do in 4.4:** branch internals interactive
+    *inline* (today a branch is one hit-box, edited via the inspector); **stage C**
+    pointer-drag to place/reorder; index-based selection can go stale after a
+    delete/move (inspector just closes — acceptable for beta). **4.5** validation UX +
+    YAML + polish.
 
 ### Known issues
 
