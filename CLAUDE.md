@@ -255,12 +255,20 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     section renders a row per instance (name, type, typed param inputs, delete —
     blocked while referenced). Now timers/counters/latches/edges are fully usable
     from the UI (declare the instance here, then add an `fb` element referencing it).
-  - **Still to do in 4.3:** editing the *contents* of a branch / NOT group (nested
-    series) — shown read-only with an "edit via DSL" note for now. A new rung starts
-    empty (`series:[]`, `coils:[]`) and only becomes *saveable* once it has ≥1 element
-    and ≥1 coil referencing existing tags — save-time validation reports this;
-    consider friendlier inline validation in 4.5.
-- **4.4** structure + the drag-drop grid canvas. **4.5** validation UX + YAML + polish.
+  - **Nested branch / NOT editing — done (card v0.8.0).** `src/elements.ts` gained a
+    `SeriesStep[]` path model (a step is `{index}` into a NOT's inner series or
+    `{index, path}` into a branch path) and path-based `addElementIn`/`removeElementIn`/
+    `updateElementIn`/`moveElementIn` (the top-level `addElement`/… are now thin
+    wrappers with an empty path), plus `newBranch`/`newNot`. The panel's series editor
+    is now **recursive** (`_renderSeries(series, ni, ri, steps)`): a branch renders each
+    OR-path as a nested series with add/remove-path, a NOT renders its inner series, to
+    any depth. `+ FB` is offered only at the top level (the model forbids fb inside a
+    branch/NOT). Tests in `test/elements.test.ts`.
+  - **4.3 is complete.** Caveat: a freshly-added rung/branch/NOT starts empty and only
+    becomes *saveable* once it has the minimum contents referencing existing tags —
+    save-time validation reports this; friendlier inline validation is 4.5.
+- **4.4 — next.** The drag-drop grid canvas (built on the render/power-flow layer and
+  the pure `elements.ts` edit helpers). **4.5** validation UX + YAML + polish.
 
 ### Known issues
 
