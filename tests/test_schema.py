@@ -35,7 +35,7 @@ def test_invalid_program_is_rejected_by_schema() -> None:
 
 
 def test_phase1_features_match_schema() -> None:
-    """S/R coils, NOT groups, retain, and true_states all validate."""
+    """S/R coils, the inline NOT inverter, retain, and true_states all validate."""
     program = {
         "scan_interval_ms": 500,
         "tags": {
@@ -54,7 +54,10 @@ def test_phase1_features_match_schema() -> None:
                 "rungs": [
                     {
                         "id": "r1",
-                        "series": [{"not": [{"type": "contact", "tag": "a"}]}],
+                        "series": [
+                            {"type": "contact", "tag": "a"},
+                            {"type": "not"},
+                        ],
                         "coils": [{"type": "coil", "tag": "m", "mode": "S"}],
                     },
                     {

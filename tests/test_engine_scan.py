@@ -202,8 +202,8 @@ def test_first_scan_without_previous_starts_false() -> None:
         (True, True, False),
     ],
 )
-def test_not_group_inverts_inner_series(a: bool, b: bool, expected: bool) -> None:
-    """NOT( a OR b ) — a negation wrapping a parallel branch."""
+def test_inline_not_inverts_running_power(a: bool, b: bool, expected: bool) -> None:
+    """( a OR b ) NOT — the inline inverter flips the branch result to NOR."""
     program = Program.from_dict(
         {
             "tags": {
@@ -219,15 +219,12 @@ def test_not_group_inverts_inner_series(a: bool, b: bool, expected: bool) -> Non
                             "id": "r",
                             "series": [
                                 {
-                                    "not": [
-                                        {
-                                            "branch": [
-                                                [{"type": "contact", "tag": "a"}],
-                                                [{"type": "contact", "tag": "b"}],
-                                            ]
-                                        }
+                                    "branch": [
+                                        [{"type": "contact", "tag": "a"}],
+                                        [{"type": "contact", "tag": "b"}],
                                     ]
-                                }
+                                },
+                                {"type": "not"},
                             ],
                             "coils": [{"type": "coil", "tag": "out"}],
                         }

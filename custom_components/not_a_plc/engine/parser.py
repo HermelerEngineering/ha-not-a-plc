@@ -18,8 +18,8 @@ Grammar (informal)::
 
 Where a *series* is space-separated elements (AND); an element is a contact
 (``tag`` for NO, ``!tag`` for NC), a parallel branch ``( pathA | pathB )`` (OR),
-or a negation ``NOT( series )``; and a *coil* is ``( = tag )`` / ``( S tag )`` /
-``( R tag )``.
+or an inline ``NOT`` that inverts the running series power; and a *coil* is
+``( = tag )`` / ``( S tag )`` / ``( R tag )``.
 
 The parser builds the canonical dict shape and hands it to
 :meth:`Program.from_dict`, so it reuses every model validation.
@@ -91,7 +91,7 @@ def _element_to_text(el: Any) -> str:
     if isinstance(el, FbRef):
         return "@" + _ident(el.instance, "fb instance")
     if isinstance(el, Not):
-        return f"NOT( {_series_to_text(el.inner)} )"
+        return "NOT"
     # Branch
     return "( " + " | ".join(_series_to_text(p) for p in el.paths) + " )"
 
@@ -234,10 +234,7 @@ def _parse_element(tokens: list[str], pos: int) -> tuple[dict[str, Any], int]:
         pos = _expect(tokens, pos + 1, "]")
         return {"type": "compare", "op": op, "left": left, "right": right}, pos
     if tok == "NOT":
-        pos = _expect(tokens, pos + 1, "(")
-        inner, pos = _parse_series(tokens, pos)
-        pos = _expect(tokens, pos, ")")
-        return {"not": inner}, pos
+        return {"type": "not"}, pos + 1
     if tok == "(":
         pos += 1
         paths: list[list[dict[str, Any]]] = []

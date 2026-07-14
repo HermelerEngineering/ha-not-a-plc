@@ -83,30 +83,31 @@ def test_invalid_contact_mode_rejected() -> None:
         Program.from_dict(data)
 
 
-def test_not_group_round_trip() -> None:
+def test_inline_not_round_trip() -> None:
     data = _minimal()
     data["tags"]["b"] = {"kind": "input", "source": "binary_sensor.b"}
+    # ( a OR NC b ) NOT — a branch followed by the inline power inverter.
     data["networks"][0]["rungs"][0]["series"] = [
         {
-            "not": [
-                {
-                    "branch": [
-                        [{"type": "contact", "tag": "a", "mode": "NO"}],
-                        [{"type": "contact", "tag": "b", "mode": "NC"}],
-                    ]
-                }
+            "branch": [
+                [{"type": "contact", "tag": "a", "mode": "NO"}],
+                [{"type": "contact", "tag": "b", "mode": "NC"}],
             ]
-        }
+        },
+        {"type": "not"},
     ]
     program = Program.from_dict(data)
     assert Program.from_dict(program.to_dict()).to_dict() == program.to_dict()
 
 
-def test_empty_not_group_rejected() -> None:
+def test_inline_not_allowed_inside_a_branch() -> None:
+    # The inverter is a leaf, so it is valid nested inside a branch path too.
     data = _minimal()
-    data["networks"][0]["rungs"][0]["series"] = [{"not": []}]
-    with pytest.raises(ProgramError, match="'not' must be a non-empty list"):
-        Program.from_dict(data)
+    data["networks"][0]["rungs"][0]["series"] = [
+        {"branch": [[{"type": "contact", "tag": "a"}, {"type": "not"}]]}
+    ]
+    program = Program.from_dict(data)
+    assert Program.from_dict(program.to_dict()).to_dict() == program.to_dict()
 
 
 def test_sr_coils_and_memory_round_trip() -> None:

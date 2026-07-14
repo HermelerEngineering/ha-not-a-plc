@@ -11,9 +11,9 @@ Design rules (do not break without updating docs/project-plan.md):
 - A rung is a *series chain*; each position is a single element (contact) or a
   *parallel branch* (list of sub-chains = OR). Chains end in one or more coils.
 
-Supports contacts (NO/NC), series/parallel, ``NOT`` groups, coils ``=`` / ``S`` /
-``R``, ``REAL`` comparators, and function-block instances (``fbs`` + inline
-``FbRef``; edge detect today, timers/counters next).
+Supports contacts (NO/NC), series/parallel, an inline ``NOT`` power inverter,
+coils ``=`` / ``S`` / ``R``, ``REAL`` comparators, and function-block instances
+(``fbs`` + inline ``FbRef``; edge detect today, timers/counters next).
 """
 
 from __future__ import annotations
@@ -282,12 +282,16 @@ class Branch:
 
 @dataclass(slots=True)
 class Not:
-    """Negation: inverts the result of an inner series chain (NOT)."""
+    """Inline power inverter: flips the running series power at its position.
 
-    inner: list[Element] = field(default_factory=list)
+    A standalone element (like :class:`FbRef`), with no inner series. In a
+    left-to-right series solve it inverts the accumulated power, so ``( a OR b )``
+    followed by ``NOT`` conducts NOR. To negate a single contact, use an NC
+    contact instead.
+    """
 
     def to_dict(self) -> dict[str, Any]:
-        return {"not": [el.to_dict() for el in self.inner]}
+        return {"type": "not"}
 
 
 @dataclass(slots=True)
@@ -350,18 +354,8 @@ def _compare_from_dict(data: dict[str, Any], where: str) -> Compare:
 
 def _element_from_dict(data: dict[str, Any], where: str) -> Element:
     _require(isinstance(data, dict), f"{where}: element must be an object")
-    if "not" in data:
-        inner_raw = data["not"]
-        _require(
-            isinstance(inner_raw, list) and inner_raw,
-            f"{where}: 'not' must be a non-empty list",
-        )
-        return Not(
-            inner=[
-                _element_from_dict(e, f"{where}.not[{i}]")
-                for i, e in enumerate(inner_raw)
-            ]
-        )
+    if data.get("type") == "not":
+        return Not()
     if "branch" in data:
         paths_raw = data["branch"]
         _require(
@@ -590,7 +584,7 @@ class Program:
             )
 
         def check_element(el: Element, where: str) -> None:
-            """Validate a *nested* element (inside a branch or NOT)."""
+            """Validate a *nested* element (inside a branch)."""
             if isinstance(el, Contact):
                 _require(
                     el.tag in known,
@@ -602,11 +596,10 @@ class Program:
                     check_real(el.right, where)
             elif isinstance(el, FbRef):
                 raise ProgramError(
-                    f"{where}: a function block may not appear inside a branch or NOT"
+                    f"{where}: a function block may not appear inside a branch"
                 )
             elif isinstance(el, Not):
-                for i, sub in enumerate(el.inner):
-                    check_element(sub, f"{where}.not[{i}]")
+                pass  # inline power inverter — nothing to validate
             else:  # Branch
                 for i, path in enumerate(el.paths):
                     for j, sub in enumerate(path):

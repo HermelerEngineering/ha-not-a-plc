@@ -264,9 +264,23 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     OR-path as a nested series with add/remove-path, a NOT renders its inner series, to
     any depth. `+ FB` is offered only at the top level (the model forbids fb inside a
     branch/NOT). Tests in `test/elements.test.ts`.
-  - **4.3 is complete.** Caveat: a freshly-added rung/branch/NOT starts empty and only
+  - **4.3 is complete.** Caveat: a freshly-added rung/branch starts empty and only
     becomes *saveable* once it has the minimum contents referencing existing tags —
     save-time validation reports this; friendlier inline validation is 4.5.
+  - **NOT redesigned: inline power inverter (int v0.8.0, card v0.9.0).** Decided
+    2026-07-14 — the old group/container `NOT( … )` (which wrapped an inner series)
+    was low-value (a NOT on one NO contact is just an NC contact) and awkward to edit.
+    `Not` is now a **standalone inline element** (like `FbRef`): in a left-to-right
+    series fold it inverts the accumulated power, so `( a OR b ) NOT` conducts NOR; to
+    negate a single contact use NC. IR shape changed from `{"not": [ …inner… ]}` to
+    `{"type": "not"}` (a leaf). Touched the pure engine (`model.py` `Not`, `scan.py`
+    `_eval_series`/`_solve_rung` fold, `parser.py` DSL `NOT` bare token, schema) and
+    the card (`ir.ts`, `power-flow.ts` fold, `render.ts` inverter box, `panel.ts` leaf
+    element, `elements.ts`/`tags.ts`/`fbs.ts` — NOT no longer nests, so
+    `SeriesStep.path` is now required). **Breaking IR change:** any stored program using
+    the old `{"not":[…]}` shape fails to load — none of the bundled programs/goldens
+    used NOT, so only unit tests needed updating; a user's hand-made NOT program in
+    `.storage` would need re-authoring (acceptable pre-1.0).
 - **4.4 — next.** The drag-drop grid canvas (built on the render/power-flow layer and
   the pure `elements.ts` edit helpers). **4.5** validation UX + YAML + polish.
 

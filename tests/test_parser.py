@@ -43,21 +43,18 @@ def _feature_program() -> Program:
                             "title": "set",
                             "series": [
                                 {
-                                    "not": [
-                                        {
-                                            "branch": [
-                                                [
-                                                    {
-                                                        "type": "contact",
-                                                        "tag": "a",
-                                                        "mode": "NC",
-                                                    }
-                                                ],
-                                                [{"type": "contact", "tag": "b"}],
-                                            ]
-                                        }
+                                    "branch": [
+                                        [
+                                            {
+                                                "type": "contact",
+                                                "tag": "a",
+                                                "mode": "NC",
+                                            }
+                                        ],
+                                        [{"type": "contact", "tag": "b"}],
                                     ]
-                                }
+                                },
+                                {"type": "not"},
                             ],
                             "coils": [{"type": "coil", "tag": "m", "mode": "S"}],
                         },

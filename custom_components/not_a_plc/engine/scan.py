@@ -10,10 +10,10 @@ given scan) carry their value across scans via the ``previous`` argument, so the
 engine stays a pure function of its inputs — no hidden state. Persisting those
 bits across a *restart* is the HA layer's job (see the coordinator's store).
 
-Scope: contacts (NO/NC), series (AND), parallel branch (OR), ``NOT`` groups,
-coils ``=`` / ``S`` / ``R``, ``REAL`` comparators, and stateful function-block
-instances (``R_TRIG`` / ``F_TRIG``; timers/counters build on the same ``fbs``
-state threading).
+Scope: contacts (NO/NC), series (AND), parallel branch (OR), an inline ``NOT``
+power inverter, coils ``=`` / ``S`` / ``R``, ``REAL`` comparators, and stateful
+function-block instances (``R_TRIG`` / ``F_TRIG``; timers/counters build on the
+same ``fbs`` state threading).
 """
 
 from __future__ import annotations
@@ -104,26 +104,31 @@ def _eval_compare(cmp: Compare, image: dict[str, Any]) -> bool:
 
 
 def _eval_element(element: Element, image: dict[str, Any]) -> bool:
-    """Evaluate a *stateless* element (contact / compare / NOT / branch).
+    """Evaluate a *stateless gate* element (contact / compare / branch).
 
-    Function-block references are only valid at the top level of a rung (the
-    model enforces this), so they never reach here.
+    ``Not`` (an inline power inverter) and ``FbRef`` are handled by the series
+    fold, not here, so they never reach this function.
     """
     if isinstance(element, Contact):
         state = _truthy(image.get(element.tag, False))
         return (not state) if element.mode == "NC" else state
     if isinstance(element, Compare):
         return _eval_compare(element, image)
-    if isinstance(element, Not):
-        return not _eval_series(element.inner, image)
     if isinstance(element, Branch):
         return any(_eval_series(path, image) for path in element.paths)
-    raise ProgramError("a function block cannot be evaluated inside a branch or NOT")
+    raise ProgramError("this element cannot be evaluated as a stateless gate")
 
 
 def _eval_series(elements: list[Element], image: dict[str, Any]) -> bool:
-    """AND of every position in a series chain. Empty chain conducts (True)."""
-    return all(_eval_element(el, image) for el in elements)
+    """Left-to-right power fold of a series chain (AND).
+
+    A ``Not`` inverts the accumulated power at its position (so ``( a OR b ) NOT``
+    conducts NOR). An empty chain conducts (True), matching an empty rung.
+    """
+    power = True
+    for el in elements:
+        power = not power if isinstance(el, Not) else power and _eval_element(el, image)
+    return power
 
 
 def _solve_fb(
@@ -301,6 +306,8 @@ def _solve_rung(
                 values[f"{el.instance}.ET"] = new_state["et"]
             if "cv" in new_state:
                 values[f"{el.instance}.CV"] = new_state["cv"]
+        elif isinstance(el, Not):
+            power = not power  # inline inverter: flip the running rung power
         else:
             power = power and _eval_element(el, values)
     return power
