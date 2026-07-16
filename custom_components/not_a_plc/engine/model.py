@@ -12,8 +12,9 @@ Design rules (do not break without updating docs/project-plan.md):
   *parallel branch* (list of sub-chains = OR). Chains end in one or more coils.
 
 Supports contacts (NO/NC), series/parallel, an inline ``NOT`` power inverter,
-coils ``=`` / ``S`` / ``R``, ``REAL`` comparators, and function-block instances
-(``fbs`` + inline ``FbRef``; edge detect today, timers/counters next).
+``REAL`` comparators, function-block instances (``fbs`` + inline ``FbRef``), and
+rung outputs: boolean coils ``=`` / ``S`` / ``R`` and REAL ``move`` / ``calc``
+(``dst := src`` and ``dst := a <op> b``).
 """
 
 from __future__ import annotations
@@ -30,7 +31,11 @@ TagType = Literal["BOOL", "REAL", "TIME"]
 ContactMode = Literal["NO", "NC"]
 CoilMode = Literal["=", "S", "R"]
 CompareOp = Literal["GT", "GE", "LT", "LE", "EQ", "NE"]
+CalcOp = Literal["ADD", "SUB", "MUL", "DIV"]
 UnavailablePolicy = Literal["false", "hold"]
+
+# Arithmetic operators the evaluator implements for a ``calc`` output.
+CALC_OPS: frozenset[str] = frozenset({"ADD", "SUB", "MUL", "DIV"})
 
 # Coil modes that the evaluator actually implements.
 IMPLEMENTED_COIL_MODES: frozenset[str] = frozenset({"=", "S", "R"})
@@ -450,14 +455,64 @@ class Move:
         return cls(dst=dst, src=src)
 
 
-# A rung output is a boolean coil or a REAL move.
-Output = Coil | Move
+@dataclass(slots=True)
+class Calc:
+    """Arithmetic output: ``dst := a <op> b`` when the rung conducts (REAL).
+
+    Like a two-input move. ``op`` is ``ADD`` / ``SUB`` / ``MUL`` / ``DIV``; ``a``
+    and ``b`` are each a numeric constant, a REAL tag, or a function-block numeric
+    output. A missing/non-numeric operand — or a division by zero — leaves ``dst``
+    unchanged (like a move that did not fire).
+    """
+
+    op: CalcOp
+    dst: str
+    a: float | int | str
+    b: float | int | str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": "calc",
+            "op": self.op,
+            "dst": self.dst,
+            "a": self.a,
+            "b": self.b,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any], where: str) -> Calc:
+        op = _get(data, "op", where)
+        _require(op in CALC_OPS, f"{where}: invalid calc op '{op}'")
+        dst = _get(data, "dst", where)
+        _require(
+            isinstance(dst, str) and dst, f"{where}: calc 'dst' must be a tag name"
+        )
+        operands: dict[str, float | int | str] = {}
+        for key in ("a", "b"):
+            _require(key in data, f"{where}: missing required key '{key}'")
+            val = data[key]
+            _require(
+                isinstance(val, (int, float, str)) and not isinstance(val, bool),
+                f"{where}: calc '{key}' must be a number or a REAL reference",
+            )
+            if isinstance(val, str):
+                _require(
+                    val != "", f"{where}: calc '{key}' reference must be non-empty"
+                )
+            operands[key] = val
+        return cls(op=op, dst=dst, a=operands["a"], b=operands["b"])
+
+
+# A rung output is a boolean coil, a REAL move, or a REAL calc.
+Output = Coil | Move | Calc
 
 
 def _output_from_dict(data: dict[str, Any], where: str) -> Output:
     _require(isinstance(data, dict), f"{where}: output must be an object")
     if data.get("type") == "move":
         return Move.from_dict(data, where)
+    if data.get("type") == "calc":
+        return Calc.from_dict(data, where)
     return Coil.from_dict(data, where)
 
 
@@ -627,6 +682,22 @@ class Program:
                 f"{where}: compare tag '{ref}' must be REAL",
             )
 
+        def check_real_dst(dst_tag: str, kind: str, where: str) -> None:
+            # A move/calc destination must be a writable REAL tag.
+            _require(
+                dst_tag in known,
+                f"{where}: {kind} writes to unknown tag '{dst_tag}'",
+            )
+            dst = self.tags[dst_tag]
+            _require(
+                dst.kind in ("coil", "memory", "temp"),
+                f"{where}: {kind} writes to '{dst_tag}' which is a '{dst.kind}' tag",
+            )
+            _require(
+                dst.type == "REAL",
+                f"{where}: {kind} target '{dst_tag}' must be a REAL tag",
+            )
+
         def check_element(el: Element, where: str) -> None:
             """Validate a *nested* element (inside a branch)."""
             if isinstance(el, Contact):
@@ -663,22 +734,15 @@ class Program:
                 for c in r.coils:
                     rw = f"network '{n.id}' rung '{r.id}'"
                     if isinstance(c, Move):
-                        _require(
-                            c.dst in known,
-                            f"{rw}: move writes to unknown tag '{c.dst}'",
-                        )
-                        dst = self.tags[c.dst]
-                        _require(
-                            dst.kind in ("coil", "memory", "temp"),
-                            f"{rw}: move writes to '{c.dst}' which is a "
-                            f"'{dst.kind}' tag",
-                        )
-                        _require(
-                            dst.type == "REAL",
-                            f"{rw}: move target '{c.dst}' must be a REAL tag",
-                        )
+                        check_real_dst(c.dst, "move", rw)
                         if isinstance(c.src, str):
                             check_real(c.src, rw)
+                        continue
+                    if isinstance(c, Calc):
+                        check_real_dst(c.dst, "calc", rw)
+                        for operand in (c.a, c.b):
+                            if isinstance(operand, str):
+                                check_real(operand, rw)
                         continue
                     _require(
                         c.tag in known,

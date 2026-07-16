@@ -42,6 +42,49 @@ def test_move_output_dsl_round_trip() -> None:
     assert program_from_text(text).to_dict() == program.to_dict()
 
 
+def test_calc_output_dsl_round_trip() -> None:
+    program = Program.from_dict(
+        {
+            "tags": {
+                "en": {"kind": "input", "source": "binary_sensor.en"},
+                "x": {"kind": "input", "type": "REAL", "source": "sensor.x"},
+                "out": {"kind": "memory", "type": "REAL"},
+            },
+            "networks": [
+                {
+                    "id": "n1",
+                    "rungs": [
+                        {
+                            "id": "r1",
+                            "series": [{"type": "contact", "tag": "en"}],
+                            "coils": [
+                                {
+                                    "type": "calc",
+                                    "op": "ADD",
+                                    "dst": "out",
+                                    "a": "x",
+                                    "b": 1,
+                                },
+                                {
+                                    "type": "calc",
+                                    "op": "DIV",
+                                    "dst": "out",
+                                    "a": "out",
+                                    "b": 2,
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    text = program_to_text(program)
+    assert "( out := x + 1 )" in text
+    assert "( out := out / 2 )" in text
+    assert program_from_text(text).to_dict() == program.to_dict()
+
+
 def _feature_program() -> Program:
     """A program exercising every DSL feature: NOT, branch, NC, S/R, meta, titles,
     true_states, writes, retain, hold."""

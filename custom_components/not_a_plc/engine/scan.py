@@ -30,6 +30,7 @@ from .model import (
     LATCH_TYPES,
     TIMER_TYPES,
     Branch,
+    Calc,
     Compare,
     Contact,
     Element,
@@ -94,6 +95,25 @@ def _as_number(value: Any) -> float | None:
     if isinstance(value, (int, float)):
         return float(value)
     return None
+
+
+def _resolve_operand(
+    operand: float | int | str, values: dict[str, Any]
+) -> float | None:
+    """Resolve a move/calc operand to a float, or None if missing/non-numeric."""
+    if isinstance(operand, str):
+        return _as_number(values.get(operand))
+    return float(operand)
+
+
+def _apply_calc(op: str, a: float, b: float) -> float | None:
+    if op == "ADD":
+        return a + b
+    if op == "SUB":
+        return a - b
+    if op == "MUL":
+        return a * b
+    return None if b == 0 else a / b  # DIV; guard divide-by-zero
 
 
 def _eval_compare(cmp: Compare, image: dict[str, Any]) -> bool:
@@ -370,13 +390,21 @@ def evaluate(
                     # Copy the REAL source into the destination when energised;
                     # otherwise leave the destination at its previous value.
                     if energised:
-                        src = _as_number(
-                            values.get(output.src)
-                            if isinstance(output.src, str)
-                            else output.src
-                        )
+                        src = _resolve_operand(output.src, values)
                         if src is not None:
                             outputs[output.dst] = src
+                    values[output.dst] = outputs[output.dst]
+                    continue
+                if isinstance(output, Calc):
+                    # dst := a <op> b when energised; a missing operand or a
+                    # divide-by-zero leaves the destination unchanged.
+                    if energised:
+                        a = _resolve_operand(output.a, values)
+                        b = _resolve_operand(output.b, values)
+                        if a is not None and b is not None:
+                            result = _apply_calc(output.op, a, b)
+                            if result is not None:
+                                outputs[output.dst] = result
                     values[output.dst] = outputs[output.dst]
                     continue
                 if output.mode not in IMPLEMENTED_COIL_MODES:

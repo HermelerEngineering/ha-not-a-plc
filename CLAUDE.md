@@ -366,10 +366,21 @@ Carried over (fold into a later phase):
 - The double custom-element `define` log noise (above) — a quick `defineOnce` guard
   when convenient; harmless.
 
-## MOVE output — REAL values (intermediate feature, requested 2026-07-16)
+## MOVE / CALC outputs — REAL values (intermediate feature, requested 2026-07-16)
 
-The analog counterpart of a coil: a **`move`** output copies a REAL value into a
-REAL destination tag when the rung conducts (`( dst := src )` in the DSL).
+The analog counterparts of a coil: a **`move`** output copies a REAL value into a
+REAL destination tag when the rung conducts (`( dst := src )` in the DSL), and a
+**`calc`** output computes `dst := a <op> b` (`op` ∈ ADD/SUB/MUL/DIV; DSL
+`( dst := a + b )` with `+ - * /`). Operands (src / a / b) are each a number, a REAL
+tag, or a fb numeric output; a missing operand or divide-by-zero leaves `dst`.
+
+**CALC — done (int v0.10.0, card v0.13.0).** Same shape as MOVE: `Calc` output
+(`{"type":"calc","op","dst","a","b"}`), `Output = Coil | Move | Calc`, `CALC_OPS`,
+`scan.py` `_apply_calc` + shared `_resolve_operand`, schema `calc` def, DSL round-trip,
+validation reuses `check_real_dst`. Card: `CalcEl`/`CalcOp`/`isCalc`, render `dst := a
+<op> b` box, palette `+ − × ÷` tools, inspector (dst REAL + a + op + b), reference walks
+in tags/fbs cover a/b. Tests: `tests/test_engine_move.py` (calc cases), card
+`test/elements.test.ts`.
 
 - **Stage 1 — done (int v0.9.0, card v0.12.0).** Internal REAL destinations only
   (`memory` / `temp` REAL tags). This introduces **REAL outputs into the engine**:

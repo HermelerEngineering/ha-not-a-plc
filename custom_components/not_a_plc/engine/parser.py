@@ -19,8 +19,9 @@ Grammar (informal)::
 Where a *series* is space-separated elements (AND); an element is a contact
 (``tag`` for NO, ``!tag`` for NC), a parallel branch ``( pathA | pathB )`` (OR),
 or an inline ``NOT`` that inverts the running series power; and an *output* is a
-coil ``( = tag )`` / ``( S tag )`` / ``( R tag )`` or a move ``( dst := src )``
-(copy a REAL value into a REAL tag when the rung conducts).
+coil ``( = tag )`` / ``( S tag )`` / ``( R tag )``, a move ``( dst := src )``, or a
+calc ``( dst := a + b )`` (``+ - * /``) — the move/calc copy or compute a REAL
+value into a REAL tag when the rung conducts.
 
 The parser builds the canonical dict shape and hands it to
 :meth:`Program.from_dict`, so it reuses every model validation.
@@ -33,7 +34,7 @@ import re
 from typing import Any
 
 from .errors import ProgramError
-from .model import Compare, Contact, FbRef, Move, Not, Program
+from .model import Calc, Compare, Contact, FbRef, Move, Not, Program
 
 # Words that introduce a statement and therefore cannot be used as tag names.
 _RESERVED = frozenset(
@@ -48,13 +49,16 @@ _TOKEN_RE = re.compile(
     r"\s*(NOT\b|>=|<=|==|!=|-?\d+(?:\.\d+)?"
     r"|[()\[\]|!<>@]|[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)"
 )
-# Parenthesised output groups, split then classified as a coil or a move.
+# Parenthesised output groups, split then classified as a coil, move or calc.
 _GROUP_RE = re.compile(r"\(([^)]*)\)")
 _COIL_INNER_RE = re.compile(r"([=SR])\s+([A-Za-z_][A-Za-z0-9_]*)\Z")
-_MOVE_INNER_RE = re.compile(
-    r"([A-Za-z_][A-Za-z0-9_]*)\s*:=\s*"
-    r"(-?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\Z"
+_OPERAND = r"-?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?"
+_MOVE_INNER_RE = re.compile(rf"([A-Za-z_][A-Za-z0-9_]*)\s*:=\s*({_OPERAND})\Z")
+_CALC_INNER_RE = re.compile(
+    rf"([A-Za-z_][A-Za-z0-9_]*)\s*:=\s*({_OPERAND})\s*([+\-*/])\s*({_OPERAND})\Z"
 )
+_SYM_TO_CALC = {"+": "ADD", "-": "SUB", "*": "MUL", "/": "DIV"}
+_CALC_TO_SYM = {op: sym for sym, op in _SYM_TO_CALC.items()}
 
 # Comparison operator symbol <-> IR op name.
 _OP_TO_SYM = {"GT": ">", "GE": ">=", "LT": "<", "LE": "<=", "EQ": "==", "NE": "!="}
@@ -118,6 +122,11 @@ def _series_to_text(elements: list[Any]) -> str:
 def _output_to_text(output: Any) -> str:
     if isinstance(output, Move):
         return f"( {_ident(output.dst, 'move dst')} := {_operand_to_text(output.src)} )"
+    if isinstance(output, Calc):
+        return (
+            f"( {_ident(output.dst, 'calc dst')} := {_operand_to_text(output.a)} "
+            f"{_CALC_TO_SYM[output.op]} {_operand_to_text(output.b)} )"
+        )
     return f"( {output.mode} {_ident(output.tag, 'coil tag')} )"
 
 
@@ -277,6 +286,18 @@ def _parse_coils(text: str) -> list[dict[str, Any]]:
         if coil:
             outputs.append(
                 {"type": "coil", "tag": coil.group(2), "mode": coil.group(1)}
+            )
+            continue
+        calc = _CALC_INNER_RE.match(inner)
+        if calc:
+            outputs.append(
+                {
+                    "type": "calc",
+                    "op": _SYM_TO_CALC[calc.group(3)],
+                    "dst": calc.group(1),
+                    "a": _parse_operand(calc.group(2)),
+                    "b": _parse_operand(calc.group(4)),
+                }
             )
             continue
         move = _MOVE_INNER_RE.match(inner)

@@ -63,7 +63,11 @@
       }
     },
     "output": {
-      "oneOf": [{ "$ref": "#/$defs/coil" }, { "$ref": "#/$defs/move" }]
+      "oneOf": [
+        { "$ref": "#/$defs/coil" },
+        { "$ref": "#/$defs/move" },
+        { "$ref": "#/$defs/calc" }
+      ]
     },
     "move": {
       "type": "object",
@@ -73,6 +77,18 @@
         "type": { "const": "move" },
         "dst": { "type": "string" },
         "src": { "type": ["number", "string"] }
+      }
+    },
+    "calc": {
+      "type": "object",
+      "required": ["type", "op", "dst", "a", "b"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "calc" },
+        "op": { "enum": ["ADD", "SUB", "MUL", "DIV"] },
+        "dst": { "type": "string" },
+        "a": { "type": ["number", "string"] },
+        "b": { "type": ["number", "string"] }
       }
     },
     "fb": {
