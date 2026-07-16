@@ -411,6 +411,50 @@ in tags/fbs cover a/b. Tests: `tests/test_engine_move.py` (calc cases), card
   value must match the target's expected range (e.g. `brightness_pct` is 0–100) — use
   a CALC to scale; no auto-scaling. A deadband on REAL writes could be added later.
 
+## Backlog — requested features (recorded 2026-07-16, implement later)
+
+Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
+
+**Phase 5 — extended I/O (new; mostly backend + small card).**
+- **Write/activate an entity preset or scene.** A rung output that calls a service
+  with static data when energised — activate a scene (`scene.turn_on`), select an
+  option (`select.select_option`), set a preset mode (`fan`/`climate.set_preset_mode`).
+  *Feasibility: high.* It generalises the Stage-2 coil write: a "service-call output"
+  with a fixed `service` + static `data` (target + option/scene). Model: a new output
+  kind (like `move`) or an extension of the BOOL coil `writes` with static data.
+  Fires on change / rising edge, change-gated in the coordinator (already the pattern).
+- **Read an entity *attribute*, not just its state.** An input tag optionally reads
+  `state.attributes.<attr>` (e.g. a light's `brightness`, a climate's
+  `current_temperature`). *Feasibility: high, small.* Add optional `attribute` to the
+  input tag binding (`model.py` Tag), read it in the coordinator `_read_input`
+  (`state.attributes.get(attr)` with the same REAL/BOOL coercion), and a field in the
+  card's input binding. No engine change (attributes resolve to the same typed value).
+
+**Timer durations with units (card UX; small).**
+- Enter timer presets as `5s` / `3m` / `1h` instead of raw ms (sub-second is pointless
+  given the ~500 ms min cycle). *Feasibility: high.* Keep `preset_ms` (ms) as the
+  canonical IR; the card's fb-param editor parses `5s`→5000 / `3m`→180000 / `1h`→
+  3600000 and formats back with a unit (pure `parseDuration`/`formatDuration` helpers,
+  unit-tested). Optionally the DSL accepts a unit suffix too. Backend unchanged.
+
+**Visual optimisation round (render + editor UX; medium).**
+- **TIA-style parameter display on blocks (FB / move / calc).** Draw blocks *taller*
+  with the operand *type/role labelled inside* (e.g. `Preset` / `PV`) and the bound
+  variable/setting **to the left** of the block per input; for move/calc, **inputs on
+  the left, output on the right** (as in Siemens TIA). *Feasibility: medium.* A
+  `render.ts` layout change: taller boxes with labelled input/output "pins". Non-trivial
+  layout work and hard to iterate blind (visual) — batch with the visual round; may
+  widen the fb/move/calc cell footprint (measure funcs) and the coil-column geometry.
+- **Popup (modal) parameter editor on element click.** Clicking an FB/move/calc/element
+  opens a modal to set its parameters, instead of (or alongside) the inline inspector.
+  *Feasibility: medium.* A Lit modal in the panel reusing the existing form editors
+  (`_renderSeriesElement`/`_renderCoilEditor`/fb param fields) as the modal body; wire
+  the canvas `onSelect*` to open it. Mostly a presentation change over existing editors.
+
+These sit after the current open work (canvas **stage C** pointer-drag; phase **4.5**
+validation UX + YAML polish). The visual round naturally bundles the two visual items
+above plus the earlier-noted MOVE/CALC visual polish.
+
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
 
 - **Tag model → four kinds.** `input`, `coil`, `memory` (retentive across scans;
