@@ -59,7 +59,20 @@
         "id": { "type": "string" },
         "title": { "type": "string" },
         "series": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/element" } },
-        "coils": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/coil" } }
+        "coils": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/output" } }
+      }
+    },
+    "output": {
+      "oneOf": [{ "$ref": "#/$defs/coil" }, { "$ref": "#/$defs/move" }]
+    },
+    "move": {
+      "type": "object",
+      "required": ["type", "dst", "src"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "move" },
+        "dst": { "type": "string" },
+        "src": { "type": ["number", "string"] }
       }
     },
     "fb": {

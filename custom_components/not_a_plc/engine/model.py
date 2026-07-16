@@ -418,10 +418,54 @@ class Coil:
 
 
 @dataclass(slots=True)
+class Move:
+    """Copy a REAL value into a REAL destination tag when the rung conducts.
+
+    The analog counterpart of a coil. ``src`` is a numeric constant, a REAL tag,
+    or a function-block numeric output (``instance.ET`` / ``instance.CV``); ``dst``
+    is a writable REAL tag (``memory`` / ``temp``). Like an unwritten coil, ``dst``
+    keeps its previous value on a scan where the rung does not conduct.
+    """
+
+    dst: str
+    src: float | int | str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"type": "move", "dst": self.dst, "src": self.src}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any], where: str) -> Move:
+        dst = _get(data, "dst", where)
+        _require(
+            isinstance(dst, str) and dst, f"{where}: move 'dst' must be a tag name"
+        )
+        _require("src" in data, f"{where}: missing required key 'src'")
+        src = data["src"]
+        _require(
+            isinstance(src, (int, float, str)) and not isinstance(src, bool),
+            f"{where}: move 'src' must be a number or a REAL reference",
+        )
+        if isinstance(src, str):
+            _require(src != "", f"{where}: move 'src' reference must be non-empty")
+        return cls(dst=dst, src=src)
+
+
+# A rung output is a boolean coil or a REAL move.
+Output = Coil | Move
+
+
+def _output_from_dict(data: dict[str, Any], where: str) -> Output:
+    _require(isinstance(data, dict), f"{where}: output must be an object")
+    if data.get("type") == "move":
+        return Move.from_dict(data, where)
+    return Coil.from_dict(data, where)
+
+
+@dataclass(slots=True)
 class Rung:
     id: str
     series: list[Element] = field(default_factory=list)
-    coils: list[Coil] = field(default_factory=list)
+    coils: list[Output] = field(default_factory=list)
     title: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -452,7 +496,7 @@ class Rung:
             for i, e in enumerate(series_raw)
         ]
         coils = [
-            Coil.from_dict(c, f"{where}.coils[{i}]") for i, c in enumerate(coils_raw)
+            _output_from_dict(c, f"{where}.coils[{i}]") for i, c in enumerate(coils_raw)
         ]
         return cls(
             id=str(rid), series=series, coils=coils, title=str(data.get("title", ""))
@@ -617,16 +661,39 @@ class Program:
                     else:
                         check_element(el, where)
                 for c in r.coils:
+                    rw = f"network '{n.id}' rung '{r.id}'"
+                    if isinstance(c, Move):
+                        _require(
+                            c.dst in known,
+                            f"{rw}: move writes to unknown tag '{c.dst}'",
+                        )
+                        dst = self.tags[c.dst]
+                        _require(
+                            dst.kind in ("coil", "memory", "temp"),
+                            f"{rw}: move writes to '{c.dst}' which is a "
+                            f"'{dst.kind}' tag",
+                        )
+                        _require(
+                            dst.type == "REAL",
+                            f"{rw}: move target '{c.dst}' must be a REAL tag",
+                        )
+                        if isinstance(c.src, str):
+                            check_real(c.src, rw)
+                        continue
                     _require(
                         c.tag in known,
-                        f"network '{n.id}' rung '{r.id}': "
-                        f"coil references unknown tag '{c.tag}'",
+                        f"{rw}: coil references unknown tag '{c.tag}'",
                     )
-                    kind = self.tags[c.tag].kind
+                    target = self.tags[c.tag]
                     _require(
-                        kind in ("coil", "memory", "temp"),
-                        f"network '{n.id}' rung '{r.id}': coil writes to "
-                        f"'{c.tag}' which is a '{kind}' tag",
+                        target.kind in ("coil", "memory", "temp"),
+                        f"{rw}: coil writes to '{c.tag}' which is a "
+                        f"'{target.kind}' tag",
+                    )
+                    _require(
+                        target.type == "BOOL",
+                        f"{rw}: coil target '{c.tag}' must be a BOOL tag "
+                        f"(use a move for REAL)",
                     )
 
     # Convenience accessors -------------------------------------------------

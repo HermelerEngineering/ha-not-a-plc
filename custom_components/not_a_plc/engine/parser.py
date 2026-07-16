@@ -18,8 +18,9 @@ Grammar (informal)::
 
 Where a *series* is space-separated elements (AND); an element is a contact
 (``tag`` for NO, ``!tag`` for NC), a parallel branch ``( pathA | pathB )`` (OR),
-or an inline ``NOT`` that inverts the running series power; and a *coil* is
-``( = tag )`` / ``( S tag )`` / ``( R tag )``.
+or an inline ``NOT`` that inverts the running series power; and an *output* is a
+coil ``( = tag )`` / ``( S tag )`` / ``( R tag )`` or a move ``( dst := src )``
+(copy a REAL value into a REAL tag when the rung conducts).
 
 The parser builds the canonical dict shape and hands it to
 :meth:`Program.from_dict`, so it reuses every model validation.
@@ -32,7 +33,7 @@ import re
 from typing import Any
 
 from .errors import ProgramError
-from .model import Compare, Contact, FbRef, Not, Program
+from .model import Compare, Contact, FbRef, Move, Not, Program
 
 # Words that introduce a statement and therefore cannot be used as tag names.
 _RESERVED = frozenset(
@@ -47,7 +48,13 @@ _TOKEN_RE = re.compile(
     r"\s*(NOT\b|>=|<=|==|!=|-?\d+(?:\.\d+)?"
     r"|[()\[\]|!<>@]|[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)"
 )
-_COIL_RE = re.compile(r"\(\s*([=SR])\s+([A-Za-z_][A-Za-z0-9_]*)\s*\)")
+# Parenthesised output groups, split then classified as a coil or a move.
+_GROUP_RE = re.compile(r"\(([^)]*)\)")
+_COIL_INNER_RE = re.compile(r"([=SR])\s+([A-Za-z_][A-Za-z0-9_]*)\Z")
+_MOVE_INNER_RE = re.compile(
+    r"([A-Za-z_][A-Za-z0-9_]*)\s*:=\s*"
+    r"(-?\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)\Z"
+)
 
 # Comparison operator symbol <-> IR op name.
 _OP_TO_SYM = {"GT": ">", "GE": ">=", "LT": "<", "LE": "<=", "EQ": "==", "NE": "!="}
@@ -108,6 +115,12 @@ def _series_to_text(elements: list[Any]) -> str:
     return " ".join(_element_to_text(e) for e in elements)
 
 
+def _output_to_text(output: Any) -> str:
+    if isinstance(output, Move):
+        return f"( {_ident(output.dst, 'move dst')} := {_operand_to_text(output.src)} )"
+    return f"( {output.mode} {_ident(output.tag, 'coil tag')} )"
+
+
 def _tag_to_text(name: str, data: dict[str, Any]) -> str:
     parts = [f"tag {_ident(name, 'tag name')} = {data['kind']} {data['type']}"]
     if "source" in data:
@@ -151,9 +164,7 @@ def program_to_text(program: Program) -> str:
         for rung in net.rungs:
             lines.append("  " + _header("rung", rung.id, rung.title))
             series = _series_to_text(rung.series)
-            coils = " ".join(
-                f"( {c.mode} {_ident(c.tag, 'coil tag')} )" for c in rung.coils
-            )
+            coils = " ".join(_output_to_text(c) for c in rung.coils)
             lines.append(f"    {series} => {coils}")
 
     return "\n".join(lines) + "\n"
@@ -259,16 +270,32 @@ def _parse_elements(expr: str) -> list[dict[str, Any]]:
 
 
 def _parse_coils(text: str) -> list[dict[str, Any]]:
-    coils = [
-        {"type": "coil", "tag": m.group(2), "mode": m.group(1)}
-        for m in _COIL_RE.finditer(text)
-    ]
-    # Everything outside the matched coils must be whitespace.
-    if _COIL_RE.sub(" ", text).strip():
+    outputs: list[dict[str, Any]] = []
+    for m in _GROUP_RE.finditer(text):
+        inner = m.group(1).strip()
+        coil = _COIL_INNER_RE.match(inner)
+        if coil:
+            outputs.append(
+                {"type": "coil", "tag": coil.group(2), "mode": coil.group(1)}
+            )
+            continue
+        move = _MOVE_INNER_RE.match(inner)
+        if move:
+            outputs.append(
+                {
+                    "type": "move",
+                    "dst": move.group(1),
+                    "src": _parse_operand(move.group(2)),
+                }
+            )
+            continue
+        raise ProgramError(f"DSL: malformed output '({inner})'")
+    # Everything outside the matched groups must be whitespace.
+    if _GROUP_RE.sub(" ", text).strip():
         raise ProgramError(f"DSL: malformed coils in '{text.strip()}'")
-    if not coils:
-        raise ProgramError(f"DSL: a rung needs at least one coil ('{text.strip()}')")
-    return coils
+    if not outputs:
+        raise ProgramError(f"DSL: a rung needs at least one output ('{text.strip()}')")
+    return outputs
 
 
 def _parse_tag(rest: str, where: str) -> tuple[str, dict[str, Any]]:

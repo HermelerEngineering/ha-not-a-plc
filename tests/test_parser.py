@@ -12,6 +12,36 @@ from engine import Program, ProgramError, program_from_text, program_to_text
 _ROOT = Path(__file__).parent.parent / "custom_components" / "not_a_plc"
 
 
+def test_move_output_dsl_round_trip() -> None:
+    program = Program.from_dict(
+        {
+            "tags": {
+                "en": {"kind": "input", "source": "binary_sensor.en"},
+                "sp": {"kind": "input", "type": "REAL", "source": "sensor.sp"},
+                "level": {"kind": "memory", "type": "REAL"},
+            },
+            "networks": [
+                {
+                    "id": "n1",
+                    "rungs": [
+                        {
+                            "id": "r1",
+                            "series": [{"type": "contact", "tag": "en"}],
+                            "coils": [
+                                {"type": "move", "dst": "level", "src": 42},
+                                {"type": "move", "dst": "level", "src": "sp"},
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    text = program_to_text(program)
+    assert "( level := 42 )" in text
+    assert program_from_text(text).to_dict() == program.to_dict()
+
+
 def _feature_program() -> Program:
     """A program exercising every DSL feature: NOT, branch, NC, S/R, meta, titles,
     true_states, writes, retain, hold."""
@@ -207,7 +237,7 @@ def test_comments_and_blank_lines_ignored() -> None:
         (
             "scan_interval_ms = 500\ntag i = input BOOL source=s.i\n"
             "tag o = coil BOOL\nnetwork n\n  rung r\n    i =>\n",
-            "at least one coil",
+            "at least one output",
         ),
         (
             "scan_interval_ms = 500\nrung r\n    i => ( = o )\n",

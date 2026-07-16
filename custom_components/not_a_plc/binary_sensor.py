@@ -30,7 +30,10 @@ async def async_setup_entry(
     coordinator: LadderCoordinator = hass.data[DOMAIN][entry.entry_id][DATA_COORDINATOR]
     program = coordinator.program
 
-    tags = list(program.coil_tags()) + list(program.memory_tags())
+    # Only BOOL coil/memory tags are binary sensors; REAL outputs (move targets)
+    # are internal for now (surfaced in the status view, not as entities).
+    outputs = {**program.coil_tags(), **program.memory_tags()}
+    tags = [name for name, tag in outputs.items() if tag.type == "BOOL"]
     async_add_entities(
         LadderBitSensor(coordinator, entry.entry_id, entry.title, tag) for tag in tags
     )

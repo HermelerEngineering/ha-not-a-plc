@@ -366,6 +366,29 @@ Carried over (fold into a later phase):
 - The double custom-element `define` log noise (above) — a quick `defineOnce` guard
   when convenient; harmless.
 
+## MOVE output — REAL values (intermediate feature, requested 2026-07-16)
+
+The analog counterpart of a coil: a **`move`** output copies a REAL value into a
+REAL destination tag when the rung conducts (`( dst := src )` in the DSL).
+
+- **Stage 1 — done (int v0.9.0, card v0.12.0).** Internal REAL destinations only
+  (`memory` / `temp` REAL tags). This introduces **REAL outputs into the engine**:
+  the output image is now `bool | float` (`scan.py` `OutputValue`, type-aware seeding
+  — BOOL→False, REAL→0.0; REAL `memory` retains its float, REAL `temp` resets). Model
+  `Move` (`{"type":"move","dst","src"}`) is a rung output alongside `Coil` (`Output =
+  Coil | Move`); validation: `move` target must be a REAL writable tag, `src` a number
+  / REAL tag / fb numeric output; a `coil` target must be BOOL. Schema `move` def; DSL
+  `( dst := src )`; parser splits output groups into coil/move. Coordinator/`Store`
+  widened to `Any`; `binary_sensor` now only publishes **BOOL** coil/memory (REAL
+  outputs are internal, surfaced in `state_image` only). Card: `MoveEl`/`Output`,
+  power-flow keys coils by `Output`, render draws a move as a `dst := src` box, canvas
+  palette `:=` tool + inspector (dst = REAL writable, src = value/REAL tag). Tests:
+  `tests/test_engine_move.py`, card `test/elements.test.ts`.
+- **Stage 2 — next (the user's real goal).** Write a REAL directly to an **HA entity**
+  (e.g. a dimmer / `input_number`): publish REAL `coil` tags as `sensor` entities and
+  add a REAL `writes` executor (service call to set the value). Needs a sensor platform
+  + a number/light-brightness write path.
+
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
 
 - **Tag model → four kinds.** `input`, `coil`, `memory` (retentive across scans;

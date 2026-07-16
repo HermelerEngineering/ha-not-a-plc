@@ -35,9 +35,13 @@ from .model import (
     Element,
     FbRef,
     FunctionBlock,
+    Move,
     Not,
     Program,
 )
+
+# An output-image value: a coil/memory bit (bool) or a REAL move target (float).
+OutputValue = bool | float
 
 _COMPARATORS: dict[str, Callable[[float, float], bool]] = {
     "GT": operator.gt,
@@ -49,19 +53,20 @@ _COMPARATORS: dict[str, Callable[[float, float], bool]] = {
 }
 
 
-class ScanResult(dict[str, bool]):
+class ScanResult(dict[str, OutputValue]):
     """The output image after a scan, plus function-block state on ``.fbs``.
 
-    It *is* the coil/memory output image (so ``result[tag]`` indexing and dict
-    comparisons keep working), and additionally carries each function-block
-    instance's state in ``.fbs`` — which the caller holds in RAM and passes back
-    in on the next scan via the ``fbs`` argument, keeping ``evaluate`` pure.
+    It *is* the output image — coil/memory bits (bool) and REAL move targets
+    (float) — so ``result[tag]`` indexing and dict comparisons keep working, and
+    additionally carries each function-block instance's state in ``.fbs`` — which
+    the caller holds in RAM and passes back in on the next scan via the ``fbs``
+    argument, keeping ``evaluate`` pure.
     """
 
     fbs: dict[str, dict[str, Any]]
 
     def __init__(
-        self, outputs: dict[str, bool], fbs: dict[str, dict[str, Any]]
+        self, outputs: dict[str, OutputValue], fbs: dict[str, dict[str, Any]]
     ) -> None:
         super().__init__(outputs)
         self.fbs = fbs
@@ -317,35 +322,41 @@ def evaluate(
     program: Program,
     image: dict[str, Any],
     now: datetime | None = None,
-    previous: dict[str, bool] | None = None,
+    previous: dict[str, OutputValue] | None = None,
     fbs: dict[str, dict[str, Any]] | None = None,
 ) -> ScanResult:
     """Solve every network top-down and return the resulting outputs.
 
     ``previous`` is the output image from the last scan; retentive outputs start
     from it. ``fbs`` is the function-block state from the last scan; each block
-    starts from it. On the first scan (or when omitted) outputs start ``False``
-    and blocks start empty.
+    starts from it. On the first scan (or when omitted) BOOL outputs start
+    ``False``, REAL outputs start ``0.0`` and blocks start empty.
 
-    Returns a :class:`ScanResult` (a coil/memory tag -> bool mapping with the new
-    function-block state on ``.fbs``). If two rungs write the same tag, the last
-    one wins (deterministic, matching a real scan order): an ``R`` after an ``S``
-    on the same tag makes reset dominant, and vice versa.
+    Returns a :class:`ScanResult` (a coil/memory/move tag -> bool|float mapping
+    with the new function-block state on ``.fbs``). If two rungs write the same
+    tag, the last one wins (deterministic, matching a real scan order): an ``R``
+    after an ``S`` on the same tag makes reset dominant, and vice versa.
     """
-    # Coil and memory bits are retentive: they start from the previous scan (so
-    # S/R latches and unwritten coils carry). Temp bits are scratch — they always
-    # start False each scan, never carrying across, and are never persisted.
-    outputs: dict[str, bool] = {name: False for name in program.coil_tags()}
-    outputs.update({name: False for name in program.memory_tags()})
+
+    def seed(tag: Any) -> OutputValue:
+        return 0.0 if tag.type == "REAL" else False
+
+    # Coil and memory outputs are retentive: they start from the previous scan (so
+    # S/R latches, unwritten coils, and moves that did not fire carry). Temp
+    # outputs are scratch — they always reset each scan and are never persisted.
+    outputs: dict[str, OutputValue] = {
+        name: seed(tag) for name, tag in program.coil_tags().items()
+    }
+    outputs.update({name: seed(tag) for name, tag in program.memory_tags().items()})
     if previous:
         for name in list(outputs):
             if name in previous:
-                outputs[name] = bool(previous[name])
-    outputs.update({name: False for name in program.temp_tags()})
+                outputs[name] = previous[name]
+    outputs.update({name: seed(tag) for name, tag in program.temp_tags().items()})
 
-    # Contacts solve against inputs *and* the coil/memory bits computed so far.
-    # Bits set by an earlier rung are visible to a later one within the same scan
-    # (top-down order), which is what makes rung ordering meaningful.
+    # Contacts solve against inputs *and* the outputs computed so far. Bits set by
+    # an earlier rung are visible to a later one within the same scan (top-down
+    # order), which is what makes rung ordering meaningful.
     values: dict[str, Any] = {**image, **outputs}
 
     fb_prev = fbs or {}
@@ -354,19 +365,33 @@ def evaluate(
     for network in program.networks:
         for rung in network.rungs:
             energised = _solve_rung(rung.series, values, now, program, fb_prev, fb_new)
-            for coil in rung.coils:
-                if coil.mode not in IMPLEMENTED_COIL_MODES:
+            for output in rung.coils:
+                if isinstance(output, Move):
+                    # Copy the REAL source into the destination when energised;
+                    # otherwise leave the destination at its previous value.
+                    if energised:
+                        src = _as_number(
+                            values.get(output.src)
+                            if isinstance(output.src, str)
+                            else output.src
+                        )
+                        if src is not None:
+                            outputs[output.dst] = src
+                    values[output.dst] = outputs[output.dst]
+                    continue
+                if output.mode not in IMPLEMENTED_COIL_MODES:
                     raise ProgramError(
-                        f"coil mode '{coil.mode}' is not implemented in this phase "
-                        f"(tag '{coil.tag}')"
+                        f"coil mode '{output.mode}' is not implemented in this phase "
+                        f"(tag '{output.tag}')"
                     )
-                if coil.mode == "=":
+                new: OutputValue
+                if output.mode == "=":
                     new = energised
-                elif coil.mode == "S":
-                    new = True if energised else outputs[coil.tag]
+                elif output.mode == "S":
+                    new = True if energised else outputs[output.tag]
                 else:  # "R"
-                    new = False if energised else outputs[coil.tag]
-                outputs[coil.tag] = new
-                values[coil.tag] = new
+                    new = False if energised else outputs[output.tag]
+                outputs[output.tag] = new
+                values[output.tag] = new
 
     return ScanResult(outputs, fb_new)

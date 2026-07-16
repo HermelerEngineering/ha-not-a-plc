@@ -100,6 +100,18 @@ def test_inline_not_round_trip() -> None:
     assert Program.from_dict(program.to_dict()).to_dict() == program.to_dict()
 
 
+def test_move_output_round_trip() -> None:
+    data = _minimal()
+    data["tags"]["level"] = {"kind": "memory", "type": "REAL"}
+    data["tags"]["sp"] = {"kind": "input", "type": "REAL", "source": "sensor.sp"}
+    data["networks"][0]["rungs"][0]["coils"] = [
+        {"type": "move", "dst": "level", "src": 42},
+        {"type": "move", "dst": "level", "src": "sp"},
+    ]
+    program = Program.from_dict(data)
+    assert Program.from_dict(program.to_dict()).to_dict() == program.to_dict()
+
+
 def test_inline_not_allowed_inside_a_branch() -> None:
     # The inverter is a leaf, so it is valid nested inside a branch path too.
     data = _minimal()

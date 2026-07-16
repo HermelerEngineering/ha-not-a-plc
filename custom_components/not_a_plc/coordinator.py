@@ -37,8 +37,12 @@ from .const import (
 from .engine import Program, ProgramError, evaluate
 
 
-class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
-    """Runs the program on a fixed cycle and holds the latest output image."""
+class LadderCoordinator(DataUpdateCoordinator[dict[str, Any]]):
+    """Runs the program on a fixed cycle and holds the latest output image.
+
+    The output image mixes bool coil/memory bits and float REAL move targets, so
+    it is typed ``dict[str, Any]``.
+    """
 
     def __init__(self, hass: HomeAssistant, program: Program, entry_id: str) -> None:
         super().__init__(
@@ -48,7 +52,7 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
             update_interval=timedelta(milliseconds=program.scan_interval_ms),
         )
         self.program = program
-        self._previous: dict[str, bool] = {}
+        self._previous: dict[str, Any] = {}
         # Function-block instance state, carried across scans in RAM (never to
         # disk per scan). Each entry is that instance's state incl. its output Q.
         self._fb_state: dict[str, dict[str, Any]] = {}
@@ -72,8 +76,8 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
         # The retained snapshot we last scheduled to persist. We only touch disk
         # when a retained bit actually changes — never once-per-scan — so a steady
         # program does no disk writes at all after startup.
-        self._saved_retained: dict[str, bool] | None = None
-        self._store: Store[dict[str, bool]] = Store(
+        self._saved_retained: dict[str, Any] | None = None
+        self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{STORAGE_KEY_PREFIX}.{entry_id}"
         )
 
@@ -91,14 +95,18 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
             return
         for name in self._retained_tags:
             if name in stored:
-                self._previous[name] = bool(stored[name])
+                self._previous[name] = stored[name]
         # Treat the loaded values as already persisted, so an unchanged program
         # never rewrites identical state right after startup.
         self._saved_retained = self._retained_snapshot()
 
-    def _retained_snapshot(self) -> dict[str, bool]:
+    def _retained_default(self, name: str) -> Any:
+        return 0.0 if self.program.tags[name].type == "REAL" else False
+
+    def _retained_snapshot(self) -> dict[str, Any]:
         return {
-            name: bool(self._previous.get(name, False)) for name in self._retained_tags
+            name: self._previous.get(name, self._retained_default(name))
+            for name in self._retained_tags
         }
 
     async def async_save_retained(self) -> None:
@@ -142,7 +150,7 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
 
     # --- Solve + write ------------------------------------------------------
 
-    async def _async_update_data(self) -> dict[str, bool]:
+    async def _async_update_data(self) -> dict[str, Any]:
         try:
             image = self._snapshot()
             result = evaluate(
@@ -155,7 +163,7 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
         except ProgramError as err:
             raise UpdateFailed(f"program error: {err}") from err
 
-        outputs: dict[str, bool] = dict(result)
+        outputs: dict[str, Any] = dict(result)
         self._fb_state = result.fbs
         self._last_inputs = image
 
@@ -169,7 +177,7 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, bool]]):
                 self._store.async_delay_save(self._retained_snapshot, RETAIN_SAVE_DELAY)
         return outputs
 
-    async def _write_on_change(self, outputs: dict[str, bool]) -> None:
+    async def _write_on_change(self, outputs: dict[str, Any]) -> None:
         """Actuate real entities for coils that changed and have a writes binding."""
         for name, tag in self.program.coil_tags().items():
             if tag.writes is None:
