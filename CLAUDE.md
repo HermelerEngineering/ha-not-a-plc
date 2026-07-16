@@ -342,19 +342,18 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   nothing downstream of it lights its connecting wire. Render-only change in
   `render.ts` (`drawContact`/`drawCompare`); `computePowerFlow` already exposed both
   `conducts` and `live` per element. Requested 2026-07-13.
-- **Double custom-element registration (card repo) — still open.** With the panel installed, the
-  bundle loads twice (panel `module_url` + the Lovelace card resource), and the Lit
-  `@customElement` decorator calls `customElements.define` unconditionally →
-  `Failed to execute 'define'… "not-a-plc-card" has already been used`. Fix: guard
-  each define so the bundle is idempotent when loaded more than once — e.g. replace
-  `@customElement("x")` with a manual `if (!customElements.get("x")) customElements.define("x", C)`
-  (or a small `defineOnce` helper) for `not-a-plc-card`, `not-a-plc-card-editor`,
-  and `not-a-plc-panel`. Harmless (the first define wins) but noisy in the log.
+- **Double custom-element registration (card repo) — fixed (card v0.14.1).** With the
+  panel installed, the bundle loads twice (panel `module_url` + the Lovelace card
+  resource), and the Lit `@customElement` decorator called `customElements.define`
+  unconditionally → `Failed to execute 'define'… "not-a-plc-card" has already been used`.
+  Fixed with a `defineOnce(name)` decorator (`src/define.ts`) that no-ops when the name
+  is already registered (first define wins); it replaces `@customElement` on
+  `not-a-plc-card`, `not-a-plc-card-editor` and `not-a-plc-panel`. Bundle is now
+  idempotent when loaded more than once.
 - **User feedback from the phase-2A/3 round — all addressed.** fb output colouring
   (card v0.3.4), ET no longer floods the websocket (v0.7.4), compares/counters show
   their live value, the editor preview is live (v0.4.0) and the tag table is editable
-  (v0.4.1) with full tag management (v0.5.0). Nothing outstanding from that round;
-  the only open known issue is the double-define log noise above.
+  (v0.4.1) with full tag management (v0.5.0). Nothing outstanding from that round.
 
 Carried over (fold into a later phase):
 
@@ -363,8 +362,6 @@ Carried over (fold into a later phase):
   and a new integration release before HACS shows them. (Note `logo.png` is currently
   identical to `icon@2x.png` — HACS brands ideally wants a wider logo, minor.)
 - A commandable `switch` coil variant for commissioning is still optional.
-- The double custom-element `define` log noise (above) — a quick `defineOnce` guard
-  when convenient; harmless.
 
 ## MOVE / CALC outputs — REAL values (intermediate feature, requested 2026-07-16)
 
