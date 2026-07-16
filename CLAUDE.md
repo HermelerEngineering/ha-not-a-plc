@@ -298,11 +298,24 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     slot to `insertElementIn`/`insertCoil`; in select mode click an element/coil →
     inspector (reuses `_renderSeriesElement`/`_renderCoilEditor`, so a branch opens the
     recursive form editor). `insertElementIn`/`insertCoil` (elements.ts) + `elementLabel`
-    (canvas.ts) are unit-tested. **Still to do in 4.4:** branch internals interactive
-    *inline* (today a branch is one hit-box, edited via the inspector); **stage C**
-    pointer-drag to place/reorder; index-based selection can go stale after a
-    delete/move (inspector just closes — acceptable for beta). **4.5** validation UX +
-    YAML + polish.
+    (canvas.ts) are unit-tested.
+  - **Stage C — done (card v0.15.0).** Pointer-drag to **reorder** top-level series
+    elements on the live view. `@pointerdown` on an element hit-target starts a
+    potential drag; once the pointer moves past a small threshold a **drop indicator**
+    marks the nearest insertion slot and, on release, the element is reordered via
+    `moveElementIn`. A press-release without movement falls through to **select** (so a
+    plain click still opens the inspector — this replaced the element's `@click`, which
+    avoids the pointerup→click race). Pure, unit-tested math in `canvas.ts`
+    (`nearestSlot` → slot index from pointer x; `reorderDelta` → the `moveElementIn`
+    delta, accounting for the self-removal shift). The renderer reports each rung's
+    insertion-slot x-positions and draws the indicator via new optional `CanvasEdit`
+    fields (`drag`/`onGeometry`/`onElementPointerDown`), all guarded so the read-only
+    card is unchanged; pointer→SVG-user-x uses `getScreenCTM().inverse()`. **Still to do
+    in 4.4:** palette **drag-to-place** (arm+click still works); branch internals
+    interactive *inline* (a branch is one hit-box, edited via the inspector); reorder
+    only works on top-level elements (not within a branch); index-based selection can go
+    stale after a delete/move (inspector just closes — acceptable for beta). **4.5**
+    validation UX + YAML + polish.
 
 ### Known issues
 
