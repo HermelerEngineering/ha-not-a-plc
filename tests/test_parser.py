@@ -42,6 +42,41 @@ def test_move_output_dsl_round_trip() -> None:
     assert program_from_text(text).to_dict() == program.to_dict()
 
 
+def test_real_write_dsl_round_trip() -> None:
+    program = Program.from_dict(
+        {
+            "tags": {
+                "en": {"kind": "input", "source": "binary_sensor.en"},
+                "dim": {
+                    "kind": "coil",
+                    "type": "REAL",
+                    "writes": {
+                        "target": "light.hall",
+                        "service": "light.turn_on",
+                        "value_key": "brightness_pct",
+                    },
+                },
+            },
+            "networks": [
+                {
+                    "id": "n1",
+                    "rungs": [
+                        {
+                            "id": "r1",
+                            "series": [{"type": "contact", "tag": "en"}],
+                            "coils": [{"type": "move", "dst": "dim", "src": 50}],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    text = program_to_text(program)
+    assert "write_service=light.turn_on" in text
+    assert "write_key=brightness_pct" in text
+    assert program_from_text(text).to_dict() == program.to_dict()
+
+
 def test_calc_output_dsl_round_trip() -> None:
     program = Program.from_dict(
         {

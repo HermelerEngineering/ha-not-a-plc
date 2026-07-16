@@ -39,7 +39,7 @@ from .engine import Program, ProgramError
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR]
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
 # The editor panel's web component ships in the companion card bundle, served by
 # HACS at this path. Kept in sync with the card repo's release filename.

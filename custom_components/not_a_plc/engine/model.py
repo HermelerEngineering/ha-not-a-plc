@@ -97,12 +97,26 @@ def _get(mapping: dict[str, Any], key: str, where: str) -> Any:
 
 @dataclass(slots=True)
 class WritesBinding:
-    """Executor binding: on write-on-change, actuate a real HA entity."""
+    """Executor binding: on write-on-change, actuate a real HA entity.
+
+    A BOOL coil actuates with ``turn_on`` / ``turn_off`` on the target's domain
+    (``service`` / ``value_key`` are ``None``). A REAL coil writes its value via an
+    explicit ``service`` (``domain.service``, e.g. ``light.turn_on``) carrying the
+    value under ``value_key`` (e.g. ``brightness_pct``). The engine only stores the
+    binding; the coordinator performs the call.
+    """
 
     target: str  # entity_id
+    service: str | None = None  # "domain.service" for REAL writes
+    value_key: str | None = None  # service-data key carrying the REAL value
 
     def to_dict(self) -> dict[str, Any]:
-        return {"target": self.target}
+        data: dict[str, Any] = {"target": self.target}
+        if self.service is not None:
+            data["service"] = self.service
+        if self.value_key is not None:
+            data["value_key"] = self.value_key
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any], where: str) -> WritesBinding:
@@ -111,7 +125,24 @@ class WritesBinding:
             isinstance(target, str) and target,
             f"{where}: 'target' must be a non-empty entity_id",
         )
-        return cls(target=target)
+        service = data.get("service")
+        if service is not None:
+            _require(
+                isinstance(service, str) and "." in service,
+                f"{where}: 'service' must be 'domain.service'",
+            )
+        value_key = data.get("value_key")
+        if value_key is not None:
+            _require(
+                isinstance(value_key, str) and value_key,
+                f"{where}: 'value_key' must be a non-empty string",
+            )
+        # A REAL write needs both service and value_key (or neither, for BOOL).
+        _require(
+            (service is None) == (value_key is None),
+            f"{where}: a REAL write needs both 'service' and 'value_key'",
+        )
+        return cls(target=target, service=service, value_key=value_key)
 
 
 @dataclass(slots=True)
@@ -191,6 +222,17 @@ class Tag:
             )
         if kind != "coil":
             _require(writes is None, f"{where}: only coil tags may have 'writes'")
+        if writes is not None:
+            if type_ == "REAL":
+                _require(
+                    writes.service is not None,
+                    f"{where}: a REAL coil write needs 'service' and 'value_key'",
+                )
+            else:
+                _require(
+                    writes.service is None,
+                    f"{where}: a BOOL coil write must not set 'service'/'value_key'",
+                )
         if kind != "memory":
             _require(
                 not data.get("retain", False),

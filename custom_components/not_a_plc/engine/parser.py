@@ -135,7 +135,12 @@ def _tag_to_text(name: str, data: dict[str, Any]) -> str:
     if "source" in data:
         parts.append(f"source={data['source']}")
     if "writes" in data:
-        parts.append(f"writes={data['writes']['target']}")
+        w = data["writes"]
+        parts.append(f"writes={w['target']}")
+        if "service" in w:
+            parts.append(f"write_service={w['service']}")
+        if "value_key" in w:
+            parts.append(f"write_key={w['value_key']}")
     if "retain" in data:
         parts.append(f"retain={'true' if data['retain'] else 'false'}")
     if "on_unavailable" in data:
@@ -340,7 +345,11 @@ def _parse_tag(rest: str, where: str) -> tuple[str, dict[str, Any]]:
         if key == "source":
             data["source"] = value
         elif key == "writes":
-            data["writes"] = {"target": value}
+            data.setdefault("writes", {})["target"] = value
+        elif key == "write_service":
+            data.setdefault("writes", {})["service"] = value
+        elif key == "write_key":
+            data.setdefault("writes", {})["value_key"] = value
         elif key == "retain":
             data["retain"] = value == "true"
         elif key == "on_unavailable":

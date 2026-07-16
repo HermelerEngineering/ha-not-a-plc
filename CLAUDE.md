@@ -395,10 +395,21 @@ in tags/fbs cover a/b. Tests: `tests/test_engine_move.py` (calc cases), card
   power-flow keys coils by `Output`, render draws a move as a `dst := src` box, canvas
   palette `:=` tool + inspector (dst = REAL writable, src = value/REAL tag). Tests:
   `tests/test_engine_move.py`, card `test/elements.test.ts`.
-- **Stage 2 — next (the user's real goal).** Write a REAL directly to an **HA entity**
-  (e.g. a dimmer / `input_number`): publish REAL `coil` tags as `sensor` entities and
-  add a REAL `writes` executor (service call to set the value). Needs a sensor platform
-  + a number/light-brightness write path.
+- **Stage 2 — done (int v0.11.0, card v0.14.0).** Write a REAL directly to an **HA
+  entity** (dimmer / `input_number` / …). `WritesBinding` gained optional
+  `service` + `value_key`: a BOOL coil still actuates via `turn_on`/`turn_off`, a REAL
+  coil calls its `service` (`domain.service`, e.g. `light.turn_on`) with the value
+  under `value_key` (e.g. `brightness_pct`). Model validates a REAL coil write needs
+  both, a BOOL coil write neither. Coordinator `_write_on_change` branches on
+  `writes.service`. New **`sensor.py` platform** publishes REAL coil+memory tags as
+  `sensor` entities (BOOL stay binary_sensor; REAL temp stays internal); registered in
+  `PLATFORMS`. DSL: `write_service=` / `write_key=` tag fields (lossless). Card:
+  `WritesBinding.service?/value_key?`, `WRITE_DOMAINS` + `defaultRealWrite` (domain →
+  service/value_key defaults), and a REAL-coil write editor in the tag table (target
+  picker + service + value_key, prefilled on target pick). Tests:
+  model/parser round-trips + validation; card `defaultRealWrite`. **Note:** the REAL
+  value must match the target's expected range (e.g. `brightness_pct` is 0–100) — use
+  a CALC to scale; no auto-scaling. A deadband on REAL writes could be added later.
 
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
 

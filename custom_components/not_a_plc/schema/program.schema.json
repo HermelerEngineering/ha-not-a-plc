@@ -37,7 +37,11 @@
           "type": "object",
           "required": ["target"],
           "additionalProperties": false,
-          "properties": { "target": { "type": "string" } }
+          "properties": {
+            "target": { "type": "string" },
+            "service": { "type": "string" },
+            "value_key": { "type": "string" }
+          }
         }
       }
     },

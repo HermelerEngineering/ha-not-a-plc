@@ -100,6 +100,43 @@ def test_inline_not_round_trip() -> None:
     assert Program.from_dict(program.to_dict()).to_dict() == program.to_dict()
 
 
+def test_real_coil_write_binding_round_trip() -> None:
+    data = _minimal()
+    data["tags"]["dim"] = {
+        "kind": "coil",
+        "type": "REAL",
+        "writes": {
+            "target": "light.hall",
+            "service": "light.turn_on",
+            "value_key": "brightness_pct",
+        },
+    }
+    program = Program.from_dict(data)
+    assert Program.from_dict(program.to_dict()).to_dict() == program.to_dict()
+
+
+def test_real_coil_write_needs_service() -> None:
+    data = _minimal()
+    data["tags"]["dim"] = {
+        "kind": "coil",
+        "type": "REAL",
+        "writes": {"target": "light.hall"},
+    }
+    with pytest.raises(ProgramError, match="REAL coil write needs"):
+        Program.from_dict(data)
+
+
+def test_bool_coil_write_must_not_have_service() -> None:
+    data = _minimal()
+    data["tags"]["b"] = {
+        "kind": "coil",
+        "type": "BOOL",
+        "writes": {"target": "switch.x", "service": "x.y", "value_key": "v"},
+    }
+    with pytest.raises(ProgramError, match="must not set"):
+        Program.from_dict(data)
+
+
 def test_move_output_round_trip() -> None:
     data = _minimal()
     data["tags"]["level"] = {"kind": "memory", "type": "REAL"}

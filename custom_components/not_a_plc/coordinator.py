@@ -178,21 +178,31 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return outputs
 
     async def _write_on_change(self, outputs: dict[str, Any]) -> None:
-        """Actuate real entities for coils that changed and have a writes binding."""
+        """Actuate real entities for coils that changed and have a writes binding.
+
+        A BOOL coil calls ``turn_on`` / ``turn_off`` on the target's domain; a REAL
+        coil calls its configured ``service`` carrying the value under ``value_key``
+        (e.g. ``light.turn_on`` with ``brightness_pct``).
+        """
         for name, tag in self.program.coil_tags().items():
-            if tag.writes is None:
+            writes = tag.writes
+            if writes is None:
                 continue
-            new = outputs.get(name, False)
+            new = outputs.get(name)
             if self._previous.get(name) == new:
                 continue
-            service = "turn_on" if new else "turn_off"
-            domain = tag.writes.target.split(".", 1)[0]
-            await self.hass.services.async_call(
-                domain,
-                service,
-                {"entity_id": tag.writes.target},
-                blocking=False,
-            )
+            if writes.service is not None:
+                assert writes.value_key is not None  # guaranteed by the model
+                domain, _, service = writes.service.partition(".")
+                data: dict[str, Any] = {
+                    "entity_id": writes.target,
+                    writes.value_key: new,
+                }
+            else:
+                domain = writes.target.split(".", 1)[0]
+                service = "turn_on" if new else "turn_off"
+                data = {"entity_id": writes.target}
+            await self.hass.services.async_call(domain, service, data, blocking=False)
 
     # --- Status view --------------------------------------------------------
 
