@@ -310,12 +310,24 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     delta, accounting for the self-removal shift). The renderer reports each rung's
     insertion-slot x-positions and draws the indicator via new optional `CanvasEdit`
     fields (`drag`/`onGeometry`/`onElementPointerDown`), all guarded so the read-only
-    card is unchanged; pointer→SVG-user-x uses `getScreenCTM().inverse()`. **Still to do
-    in 4.4:** palette **drag-to-place** (arm+click still works); branch internals
-    interactive *inline* (a branch is one hit-box, edited via the inspector); reorder
-    only works on top-level elements (not within a branch); index-based selection can go
-    stale after a delete/move (inspector just closes — acceptable for beta). **4.5**
-    validation UX + YAML + polish.
+    card is unchanged; pointer→SVG-user-x uses `getScreenCTM().inverse()`.
+  - **Palette drag-to-place — done (card v0.16.0).** Press-drag a palette tool onto the
+    ladder to add it: while dragging, the insert slots show and the same drop indicator
+    marks the nearest series slot in the rung under the pointer; on release the element
+    is inserted there. A coil tool appends to the rung it is dropped on (coil placement
+    is append-only, so no per-slot indicator for coils). A press-release without a drag
+    still **arms** the tool, so the earlier arm+click flow is unchanged (chips lost their
+    `@click`; arm is driven from pointerup-without-move, same pattern as element select).
+    Cross-rung/cross-network hit-testing: `onGeometry` now reports each rung's **y-band**
+    plus slot x-positions; the panel finds the SVG under the pointer via
+    `shadowRoot.elementFromPoint` + a `data-ni` attribute, converts to that SVG's user
+    space (`_toUserXY`), and resolves the target with a pure, unit-tested `hitRung`
+    (canvas.ts). New `CanvasEdit.placeDrop` drives the indicator (shared with reorder).
+    `_geom` is now `Map<ni, RungGeom[]>`, rebuilt each render. **Still to do in 4.4:**
+    branch internals interactive *inline* (a branch is one hit-box, edited via the
+    inspector); reorder/place only target top-level elements (not within a branch);
+    index-based selection can go stale after a delete/move (inspector just closes —
+    acceptable for beta). **4.5** validation UX + YAML + polish.
 
 ### Known issues
 
