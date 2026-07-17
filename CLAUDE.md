@@ -335,11 +335,18 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     child hit-targets sit on top and win the click). `CanvasEdit` now carries `steps` on
     `selected`/`onSelectElement`/`onInsertElement` (top-level passes `[]`) and an
     `allowNestedInsert` flag (nested slots show only for a persistently armed element
-    tool, not a palette drag — a drag resolves to the top level only). **Still to do in
-    4.4:** drag-*reorder* within a branch (nested elements are click-select only, no
-    `@pointerdown`); palette drag-to-place into a branch (arm+click works); add/remove
-    branch **path** on the canvas (still via the inspector form). **4.5** validation UX +
-    YAML + polish.
+    tool, not a palette drag — a drag resolves to the top level only).
+  - **Add branch path on the canvas — done (card v0.18.0).** A **"+ path"** control (a
+    small circle at each branch's bottom-left, at any depth) adds a new OR-path:
+    with an element tool armed it seeds the path with that element, in select mode it
+    adds an empty path (fill it via its nested slots). Pure helper `addBranchPath`
+    (elements.ts, unit-tested) + `CanvasEdit.onAddPath`. This fixes the reported
+    inability to build a 3-paths-high branch on the canvas (clicking below a 2-path
+    branch used to land in the bottom path). **Still to do in 4.4:** palette/reorder
+    **drag into** branch-path positions (today a drag resolves to the top level only —
+    arm+click into paths and the "+ path" control cover authoring meanwhile); drag-
+    *reorder* within a branch; remove-path on the canvas (still via the inspector).
+    **4.5** validation UX + YAML + polish.
 
 ### Known issues
 
