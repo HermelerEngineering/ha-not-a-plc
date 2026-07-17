@@ -323,11 +323,23 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     `shadowRoot.elementFromPoint` + a `data-ni` attribute, converts to that SVG's user
     space (`_toUserXY`), and resolves the target with a pure, unit-tested `hitRung`
     (canvas.ts). New `CanvasEdit.placeDrop` drives the indicator (shared with reorder).
-    `_geom` is now `Map<ni, RungGeom[]>`, rebuilt each render. **Still to do in 4.4:**
-    branch internals interactive *inline* (a branch is one hit-box, edited via the
-    inspector); reorder/place only target top-level elements (not within a branch);
-    index-based selection can go stale after a delete/move (inspector just closes —
-    acceptable for beta). **4.5** validation UX + YAML + polish.
+    `_geom` is now `Map<ni, RungGeom[]>`, rebuilt each render.
+  - **Branch internals inline — select + insert done (card v0.17.0).** Elements *inside*
+    a branch are now individually **selectable** on the live view (click → inspector for
+    that exact element) and, with an element tool armed, **insertable** into a branch
+    path (click a nested ＋ slot). Driven by a new pure, lit-free `src/layout.ts`
+    (`measureElement`/`measureSeries` moved out of render.ts + a `walkSeries` that yields
+    every element's grid cell and every series' slot columns with its `SeriesStep` path,
+    mirroring the painter's branch layout; unit-tested in `test/walk.test.ts`). The
+    overlay adds a nested pass after the top-level one (parent-branch box drawn first, so
+    child hit-targets sit on top and win the click). `CanvasEdit` now carries `steps` on
+    `selected`/`onSelectElement`/`onInsertElement` (top-level passes `[]`) and an
+    `allowNestedInsert` flag (nested slots show only for a persistently armed element
+    tool, not a palette drag — a drag resolves to the top level only). **Still to do in
+    4.4:** drag-*reorder* within a branch (nested elements are click-select only, no
+    `@pointerdown`); palette drag-to-place into a branch (arm+click works); add/remove
+    branch **path** on the canvas (still via the inspector form). **4.5** validation UX +
+    YAML + polish.
 
 ### Known issues
 
