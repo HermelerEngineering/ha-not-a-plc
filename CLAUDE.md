@@ -346,6 +346,17 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     **drag into** branch-path positions (today a drag resolves to the top level only —
     arm+click into paths and the "+ path" control cover authoring meanwhile); drag-
     *reorder* within a branch; remove-path on the canvas (still via the inspector).
+  - **Palette drag into branch positions — done (card v0.20.0).** A palette element
+    dragged onto the ladder now resolves to *any* insertion slot, top-level or inside a
+    branch path (the target slot highlights as you hover). The renderer reports **every**
+    insertion slot (with the rank-spread applied) as a `SlotTarget` via `onGeometry`
+    (alongside the top-level `slotXs` the reorder/coil drag still use); the panel picks
+    the nearest with a pure, unit-tested `nearestTarget` (canvas.ts — nearest x among
+    slots whose y-band contains the pointer, deeper wins ties, null over a gap). Drop
+    inserts via `insertElementIn(steps, index)` and selects the new element. Coil drags
+    still append via `hitRung`. **Still open in 4.4:** *reorder*-drag of an existing
+    element into/within a branch (needs nested `@pointerdown` + a cross-series move);
+    remove-path on the canvas.
 - **4.5 — in progress. Inline validation done (card v0.19.0).** A pure, lit-free,
   unit-tested `src/validate.ts` (`validateProgram(program) → ValidationIssue[]`) flags
   the *unambiguously-broken* things (empty/dangling tag & fb references on
