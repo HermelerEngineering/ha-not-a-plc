@@ -346,7 +346,17 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     **drag into** branch-path positions (today a drag resolves to the top level only —
     arm+click into paths and the "+ path" control cover authoring meanwhile); drag-
     *reorder* within a branch; remove-path on the canvas (still via the inspector).
-    **4.5** validation UX + YAML + polish.
+- **4.5 — in progress. Inline validation done (card v0.19.0).** A pure, lit-free,
+  unit-tested `src/validate.ts` (`validateProgram(program) → ValidationIssue[]`) flags
+  the *unambiguously-broken* things (empty/dangling tag & fb references on
+  contacts/compares/fb/coil/move/calc, walking into branch paths; a rung with no
+  output = warning). The panel shows them in a live `_renderValidation` bar above the
+  editor ("✓ No problems found" or an expandable error/warning list with rung
+  locations), updating as you edit. Deliberately conservative — it never flags what the
+  backend accepts and does NOT check type-level rules (e.g. compare operand must be
+  REAL); the backend's `Program.from_dict` stays authoritative on save. **Still in 4.5:**
+  surface the backend save error inline too; YAML export/import polish; then general
+  polish. Canvas **drag into branch positions** (4.4 leftover) is still open.
 
 ### Known issues
 
