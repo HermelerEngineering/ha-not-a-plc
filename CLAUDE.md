@@ -354,9 +354,13 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   editor ("✓ No problems found" or an expandable error/warning list with rung
   locations), updating as you edit. Deliberately conservative — it never flags what the
   backend accepts and does NOT check type-level rules (e.g. compare operand must be
-  REAL); the backend's `Program.from_dict` stays authoritative on save. **Still in 4.5:**
-  surface the backend save error inline too; YAML export/import polish; then general
-  polish. Canvas **drag into branch positions** (4.4 leftover) is still open.
+  REAL); the backend's `Program.from_dict` stays authoritative on save. Refinements
+  (card v0.19.1): empty **OR-path** flagged (the backend rejects it); the save error is
+  now readable (`wsErrorMessage` extracts `.message` from HA's `{code,message}` reject —
+  was "[object Object]"); and arm+click placing an element/coil now **switches to select
+  mode on the new element** (place-then-configure). **Still in 4.5:** YAML export/import
+  polish; general polish. Canvas **drag into branch positions** (4.4 leftover) is still
+  open (user wants it next).
 
 ### Known issues
 
