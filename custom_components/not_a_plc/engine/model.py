@@ -158,6 +158,10 @@ class Tag:
     # "use the coordinator's default mapping". Interpretation happens in the HA
     # layer; the engine never sees raw entity strings.
     true_states: tuple[str, ...] | None = None
+    # For input tags: read ``state.attributes[attribute]`` instead of the entity
+    # state (e.g. a light's ``brightness``). ``None`` reads the state as usual. The
+    # engine never sees this — the coordinator resolves it to the same typed value.
+    attribute: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {"kind": self.kind, "type": self.type}
@@ -171,6 +175,8 @@ class Tag:
             data["on_unavailable"] = self.on_unavailable
             if self.true_states is not None:
                 data["true_states"] = list(self.true_states)
+            if self.attribute is not None:
+                data["attribute"] = self.attribute
         return data
 
     @classmethod
@@ -209,6 +215,13 @@ class Tag:
             )
             true_states = tuple(true_states_raw)
 
+        attribute = data.get("attribute")
+        if attribute is not None:
+            _require(
+                isinstance(attribute, str) and attribute,
+                f"{where}: 'attribute' must be a non-empty string",
+            )
+
         if kind == "input":
             _require(
                 isinstance(source, str) and source,
@@ -219,6 +232,10 @@ class Tag:
             _require(
                 true_states is None,
                 f"{where}: only input tags may have 'true_states'",
+            )
+            _require(
+                attribute is None,
+                f"{where}: only input tags may have an 'attribute'",
             )
         if kind != "coil":
             _require(writes is None, f"{where}: only coil tags may have 'writes'")
@@ -248,6 +265,7 @@ class Tag:
             retain=bool(data.get("retain", False)),
             on_unavailable=on_unavailable,
             true_states=true_states,
+            attribute=attribute,
         )
 
 

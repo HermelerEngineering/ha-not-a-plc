@@ -119,7 +119,11 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     # --- Snapshot -----------------------------------------------------------
 
     def _read_input(self, tag_name: str) -> Any:
-        """Read one input tag's source entity into a typed value."""
+        """Read one input tag's source entity into a typed value.
+
+        Normally reads the entity *state*; when the tag names an ``attribute`` it
+        reads ``state.attributes[attribute]`` instead (e.g. a light's brightness).
+        """
         tag = self.program.tags[tag_name]
         assert tag.source is not None  # guaranteed for input tags by the model
         state: State | None = self.hass.states.get(tag.source)
@@ -127,16 +131,36 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
             return self._on_unavailable(tag_name)
 
-        if tag.type == "REAL":
-            try:
-                value: Any = float(state.state)
-            except (ValueError, TypeError):
+        if tag.attribute is not None:
+            raw: Any = state.attributes.get(tag.attribute)
+            if raw is None:
                 return self._on_unavailable(tag_name)
         else:
-            value = state.state.lower() in self._true_states[tag_name]
+            raw = state.state
+
+        value = self._coerce_input(tag_name, tag, raw)
+        if value is None:
+            return self._on_unavailable(tag_name)
 
         self._input_history[tag_name] = value
         return value
+
+    def _coerce_input(self, tag_name: str, tag: Any, raw: Any) -> Any:
+        """Coerce a raw state/attribute value to the tag's typed value.
+
+        REAL -> float (None if not numeric); BOOL -> a real bool/number is used
+        directly, anything else is matched against the tag's true-state set.
+        """
+        if tag.type == "REAL":
+            try:
+                return float(raw)
+            except (ValueError, TypeError):
+                return None
+        if isinstance(raw, bool):
+            return raw
+        if isinstance(raw, (int, float)):
+            return raw != 0
+        return str(raw).lower() in self._true_states[tag_name]
 
     def _on_unavailable(self, tag_name: str) -> Any:
         """Value to use when an input is unavailable/unreadable."""

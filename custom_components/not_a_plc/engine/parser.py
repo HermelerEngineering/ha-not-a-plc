@@ -11,6 +11,7 @@ Grammar (informal)::
 
     tag <name> = <kind> <TYPE> [source=<id>] [writes=<id>] [retain=<bool>]
                  [on_unavailable=false|hold] [true_states=<json-array>]
+                 [attribute=<name>]
 
     network <id> ["title"]
       rung <id> ["title"]
@@ -149,6 +150,8 @@ def _tag_to_text(name: str, data: dict[str, Any]) -> str:
         parts.append(
             "true_states=" + json.dumps(data["true_states"], separators=(",", ":"))
         )
+    if "attribute" in data:
+        parts.append(f"attribute={data['attribute']}")
     return " ".join(parts)
 
 
@@ -356,6 +359,8 @@ def _parse_tag(rest: str, where: str) -> tuple[str, dict[str, Any]]:
             data["on_unavailable"] = value
         elif key == "true_states":
             data["true_states"] = json.loads(value)
+        elif key == "attribute":
+            data["attribute"] = value
         else:
             raise ProgramError(f"{where}: unknown tag field '{key}'")
     return name, data

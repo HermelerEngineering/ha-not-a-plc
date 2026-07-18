@@ -501,12 +501,16 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   with a fixed `service` + static `data` (target + option/scene). Model: a new output
   kind (like `move`) or an extension of the BOOL coil `writes` with static data.
   Fires on change / rising edge, change-gated in the coordinator (already the pattern).
-- **Read an entity *attribute*, not just its state.** An input tag optionally reads
-  `state.attributes.<attr>` (e.g. a light's `brightness`, a climate's
-  `current_temperature`). *Feasibility: high, small.* Add optional `attribute` to the
-  input tag binding (`model.py` Tag), read it in the coordinator `_read_input`
-  (`state.attributes.get(attr)` with the same REAL/BOOL coercion), and a field in the
-  card's input binding. No engine change (attributes resolve to the same typed value).
+- **Read an entity *attribute*, not just its state — done (int v0.12.0, card v0.26.0).**
+  An input tag optionally reads `state.attributes[attribute]` (e.g. a light's `brightness`,
+  a climate's `current_temperature`). `model.py` Tag gained `attribute: str | None` (input-
+  only; to_dict/from_dict/schema/DSL `attribute=<name>` round-trip); the coordinator's
+  `_read_input` reads the attribute when set, via a shared `_coerce_input` (REAL→float,
+  BOOL→real bool/number used directly else matched against `true_states`), falling back to
+  `on_unavailable` when the attribute is missing/non-numeric. No engine change (attributes
+  resolve to the same typed value). Card: `TagDef.attribute?`, a per-input "attribute
+  (optional)" field in the tag table (`_setAttribute`), carried by `normaliseForKind`.
+  Tests: model round-trip/validation + the parser feature-program covers it.
 
 **Timer durations with units (card UX; small).**
 - Enter timer presets as `5s` / `3m` / `1h` instead of raw ms (sub-second is pointless

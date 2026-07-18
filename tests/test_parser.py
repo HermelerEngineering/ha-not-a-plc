@@ -137,7 +137,12 @@ def _feature_program() -> Program:
                 "b": {"kind": "input", "source": "binary_sensor.b"},
                 "m": {"kind": "memory", "retain": True},
                 "out": {"kind": "coil", "writes": {"target": "switch.out"}},
-                "temp": {"kind": "input", "source": "sensor.temp", "type": "REAL"},
+                "temp": {
+                    "kind": "input",
+                    "source": "climate.living",
+                    "type": "REAL",
+                    "attribute": "current_temperature",
+                },
                 "sp": {"kind": "input", "source": "sensor.sp", "type": "REAL"},
                 "hot": {"kind": "coil"},
             },

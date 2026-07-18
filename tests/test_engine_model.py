@@ -185,3 +185,30 @@ def test_true_states_rejected_on_non_input() -> None:
     data["tags"]["out"]["true_states"] = ["on"]
     with pytest.raises(ProgramError, match="only input tags may have 'true_states'"):
         Program.from_dict(data)
+
+
+def test_attribute_round_trip() -> None:
+    data = _minimal()
+    data["tags"]["b"] = {
+        "kind": "input",
+        "type": "REAL",
+        "source": "light.desk",
+        "attribute": "brightness",
+    }
+    program = Program.from_dict(data)
+    assert program.tags["b"].attribute == "brightness"
+    assert Program.from_dict(program.to_dict()).to_dict() == program.to_dict()
+
+
+def test_attribute_rejected_on_non_input() -> None:
+    data = _minimal()
+    data["tags"]["out"]["attribute"] = "brightness"
+    with pytest.raises(ProgramError, match="only input tags may have an 'attribute'"):
+        Program.from_dict(data)
+
+
+def test_attribute_must_be_non_empty_string() -> None:
+    data = _minimal()
+    data["tags"]["a"]["attribute"] = ""
+    with pytest.raises(ProgramError, match="'attribute' must be a non-empty string"):
+        Program.from_dict(data)

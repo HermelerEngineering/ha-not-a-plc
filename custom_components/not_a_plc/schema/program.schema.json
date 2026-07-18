@@ -30,6 +30,7 @@
         "kind": { "enum": ["input", "coil", "memory", "temp"] },
         "type": { "enum": ["BOOL", "REAL", "TIME"] },
         "source": { "type": "string" },
+        "attribute": { "type": "string" },
         "retain": { "type": "boolean" },
         "on_unavailable": { "enum": ["false", "hold"] },
         "true_states": { "type": "array", "items": { "type": "string" } },
