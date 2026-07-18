@@ -521,6 +521,9 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   service + raw-JSON escape hatch for anything off-list. `withService` keeps the entity when
   the new domain matches, else clears it. The canvas action box now also shows the chosen
   option value below the entity. Panel reads option lists via `_stateOptions(entity, attr)`.
+  (card v0.30.1: inside the popup an element editor's fields stack **vertically**
+  (`.modal .el-row` column, full-width inputs) so a wide editor no longer overflows with a
+  horizontal scrollbar; the inline structure editor keeps its horizontal row.)
 - **Read an entity *attribute*, not just its state — done (int v0.12.0, card v0.26.0).**
   An input tag optionally reads `state.attributes[attribute]` (e.g. a light's `brightness`,
   a climate's `current_temperature`). `model.py` Tag gained `attribute: str | None` (input-
