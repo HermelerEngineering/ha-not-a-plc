@@ -648,9 +648,11 @@ Grouped roughly in the order they'd logically be tackled:
   `_renderFbInstancePanel`). *Feasibility: medium* — on drop, auto-create an instance
   (generate a name, `addFb`, default type) and open its popup; `validate.ts` already flags an
   unset/dangling instance until configured. Bundle with the FB-list-as-table item.
-- **Rename the `coil` tag kind to "output" in the UI.** Display label only — keep the IR/DSL/
-  schema kind `coil` for compatibility (and mind that the rung-*output* element is also called
-  a coil; scope the relabel to the tag-kind picker + visible strings). *Feasibility: high.*
+- **Rename the `coil` tag kind to "output" in the UI — *tag list only*.** Just the tag-kind
+  label in the **tag list** (the kind `<select>` + that table's strings): "output" fits better
+  there because such a tag can also be **REAL** (not only a boolean coil). Do **not** rename the
+  rung-*output* coil element elsewhere, and keep the IR/DSL/schema kind `coil` for
+  compatibility. *Feasibility: high.*
 - **Canvas zoom presets (small/medium/large).** A scale control so large networks fit on
   screen. *Feasibility: high* — wrap each network SVG in a scale (CSS `zoom`/`transform` or a
   scaled `viewBox`); presets pick a factor. Pure layout geometry is unaffected (the SVG
