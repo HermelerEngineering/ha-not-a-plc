@@ -545,6 +545,13 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   `fbFields` params via `_renderFbParam`), so preset/PV/reset are editable right there —
   no need to visit the separate "Function blocks" section first. Titled per element type
   (`_elementTitle`/`_coilTitle`). The old `.inspector` inline bar is replaced.
+  - **Two-click open (card v0.24.1).** The popup no longer opens on the first click: a
+    first click **selects** (outline), a second click of the already-selected element opens
+    the popup (new `_modal` state gates `_renderInspector`; `_selectEl`/`_selectCoil` set
+    `_modal=true` only when the click repeats the current selection). Placement (place-then-
+    select, drag-drop, add-path) selects the new element with the popup **closed**, so you
+    get the element selected instead of an immediate popup. Closing the popup keeps the
+    selection (click again to reopen). Requested 2026-07-18.
 
 **Editor-UX polish (card; small–medium — recorded 2026-07-17).**
 - **OR wraps the selected element — done (card v0.24.0).** Pure `elements.ts`
