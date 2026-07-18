@@ -554,10 +554,11 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
     selection (click again to reopen). Requested 2026-07-18.
 
 **Editor-UX polish (card; small–medium — recorded 2026-07-17).**
-- **OR wraps the selected element — done (card v0.24.0).** Pure `elements.ts`
-  `wrapInBranch(program, ni, ri, steps, ei)` replaces the element at that position with an
-  OR branch whose first path is `[thatElement]` (a single non-empty path = valid; the user
-  adds parallel paths via the branch editor's "+ path"). A branch is left unchanged.
+- **OR wraps the selected element — done (card v0.24.0; two-path v0.24.3).** Pure
+  `elements.ts` `wrapInBranch(program, ni, ri, steps, ei)` replaces the element at that
+  position with an OR branch `[[thatElement], []]` — the element in path 1 and a second
+  **empty** path ready to fill (that empty path is what makes it a real OR; validation flags
+  it until filled). A branch is left unchanged.
   Surfaced two ways: a **"Wrap OR"** button in the element's action row (`_elActions`, shown
   in the popup and structure editor), and — since the two-click popup (v0.24.1) means a
   first click only *selects* — **pressing the OR palette tool while an element is selected**
