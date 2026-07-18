@@ -553,10 +553,12 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   *Feasibility: high.* A pure `elements.ts` helper that replaces the selected element with
   a branch whose path 0 is `[thatElement]`; wire the palette OR tool to this when there is
   a current selection (fall back to inserting an empty branch when nothing is selected).
-- **Bigger, square palette buttons.** The toolbar element tools should be larger — about
-  as wide as the Select button and square. Later they should adopt the same graphical
-  style as the on-canvas symbols; that styling is a *stretch* and may be skipped if it
-  complicates things. *Feasibility: high (sizing) / medium (canvas-style glyphs).*
+- **Bigger, square palette buttons — done (card v0.23.1).** The draggable palette tool
+  chips are now 46×46 squares (`button.chip.draggable`), roughly the Select button's width.
+  The canvas-style glyphs remain a later *stretch*. Same release: the destructive **✕
+  delete** icon buttons are now **red by default** (`button.icon`), with a `neutral`
+  variant for non-destructive icons (modal close, reorder ↑/↓), so delete reads clearly
+  different from the popup's close ✕.
 - **Red background on the erroring position.** In addition to the validation bar, the
   canvas position of each error should get a red background so it is visible in place.
   *Feasibility: medium.* `validate.ts` already yields `{ni, ri, …}`; extend an issue to
