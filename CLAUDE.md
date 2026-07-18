@@ -536,15 +536,15 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
     = 2 rows, move/coil = 1), a `coilTaps[]` array of each output's power-line y, and
     `totalCoilRows` driving the rung height, the vertical bus length, and the coil
     hit-target heights. Fixes the "line goes up first" and "bus runs too far down" reports.
-- **Popup (modal) parameter editor on element click.** Clicking an FB/move/calc/element
-  opens a modal to set its parameters, instead of (or alongside) the inline inspector.
-  *Feasibility: medium.* A Lit modal in the panel reusing the existing form editors
-  (`_renderSeriesElement`/`_renderCoilEditor`/fb param fields) as the modal body; wire
-  the canvas `onSelect*` to open it. Mostly a presentation change over existing editors.
-  **Note (user, 2026-07-18):** for an `fb` element the modal must also let the user edit
-  the referenced instance's **parameters** (preset/PV/reset/…), not just which instance —
-  i.e. surface the "Function blocks" per-instance param editor inline in the popup, so you
-  don't have to declare/edit the block separately before placing it.
+- **Popup (modal) parameter editor on element click — done (card v0.23.0).** Selecting an
+  element/coil on the canvas (click, or place-then-select) now opens a **modal** (`.modal`
+  in `panel.ts`, backdrop + ✕ / backdrop-click to close) instead of the inline inspector
+  bar. The body reuses the existing form editors (`_renderSeriesElement`/`_renderCoilEditor`),
+  so branches still open the recursive editor. For an **fb** element the modal also embeds
+  the referenced instance's **parameters** (`_renderFbInstancePanel`: type select +
+  `fbFields` params via `_renderFbParam`), so preset/PV/reset are editable right there —
+  no need to visit the separate "Function blocks" section first. Titled per element type
+  (`_elementTitle`/`_coilTitle`). The old `.inspector` inline bar is replaced.
 
 **Editor-UX polish (card; small–medium — recorded 2026-07-17).**
 - **OR wraps the selected element.** When an element is selected and the user places an
