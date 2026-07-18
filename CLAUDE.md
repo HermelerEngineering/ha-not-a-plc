@@ -354,9 +354,13 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     the nearest with a pure, unit-tested `nearestTarget` (canvas.ts — nearest x among
     slots whose y-band contains the pointer, deeper wins ties, null over a gap). Drop
     inserts via `insertElementIn(steps, index)` and selects the new element. Coil drags
-    still append via `hitRung`. **Still open in 4.4:** *reorder*-drag of an existing
-    element into/within a branch (needs nested `@pointerdown` + a cross-series move);
-    remove-path on the canvas.
+    still append via `hitRung`. Palette drag into OR positions validated by the user
+    2026-07-17. **Still open in 4.4 (deferred, on the list — do not start unprompted):**
+    *reorder*-drag of an existing top-level element **into/within a branch** (needs nested
+    `@pointerdown` + a cross-series move) — user wants this eventually but parked it.
+    Remove-path on the canvas is **dropped** — the user decided 2026-07-17 that deleting a
+    path via the selected branch's inspector is good enough and a canvas control would be
+    too cluttered.
 - **4.5 — in progress. Inline validation done (card v0.19.0).** A pure, lit-free,
   unit-tested `src/validate.ts` (`validateProgram(program) → ValidationIssue[]`) flags
   the *unambiguously-broken* things (empty/dangling tag & fb references on
@@ -369,9 +373,10 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
   (card v0.19.1): empty **OR-path** flagged (the backend rejects it); the save error is
   now readable (`wsErrorMessage` extracts `.message` from HA's `{code,message}` reject —
   was "[object Object]"); and arm+click placing an element/coil now **switches to select
-  mode on the new element** (place-then-configure). **Still in 4.5:** YAML export/import
-  polish; general polish. Canvas **drag into branch positions** (4.4 leftover) is still
-  open (user wants it next).
+  mode on the new element** (place-then-configure). **Still in 4.5 (deferred):** YAML
+  export/import polish (user parked it 2026-07-17); general polish. Plus two validation-
+  UX asks from 2026-07-17 (see the editor-UX backlog below): **highlight the erroring
+  position with a red background** on the canvas, not just list it in the bar.
 
 ### Known issues
 
@@ -504,21 +509,52 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   unit-tested). Optionally the DSL accepts a unit suffix too. Backend unchanged.
 
 **Visual optimisation round (render + editor UX; medium).**
-- **TIA-style parameter display on blocks (FB / move / calc).** Draw blocks *taller*
-  with the operand *type/role labelled inside* (e.g. `Preset` / `PV`) and the bound
-  variable/setting **to the left** of the block per input; for move/calc, **inputs on
-  the left, output on the right** (as in Siemens TIA). *Feasibility: medium.* A
-  `render.ts` layout change: taller boxes with labelled input/output "pins". Non-trivial
-  layout work and hard to iterate blind (visual) — batch with the visual round; may
-  widen the fb/move/calc cell footprint (measure funcs) and the coil-column geometry.
+- **TIA-style parameter display on blocks (FB / move / calc).**
+  - **FB blocks — done (card v0.21.0).** A pure, lit-free, unit-tested `src/block.ts`
+    (`fbBlock(instance, def, state) → {title, ins[], outs[]}`, `blockPinRows`) gives each
+    fb type its input/output *pins* with a terse role label (IN/PT/Q/ET, CU/R/PV/CV,
+    S/R, CLK). `render.ts` `drawFb` now draws a TIA-style box: power pins on the baseline
+    (row 0), parameter pins stacked below; the role label sits **inside** the box, the
+    setting/bound-tag **left** of an input pin and the live value **right** of an output
+    pin (new `pin-l`/`pin-r`/`pin-v-l`/`pin-v-r` text classes in both `ladder-card.ts`
+    and `panel.ts` styles). Function blocks now measure **2 cols × 2 rows**
+    (`layout.ts` `measureElement`) to give room; edges (single power pin row) still draw
+    a compact box centred on the baseline. **Still to do:** move/calc outputs (below), and
+    the *visual polish* (spacing/edge-block empty space) once the user eyeballs it.
+  - **Move/calc outputs — TODO (next, card v0.22.0).** Same idea for the REAL outputs in
+    the coil column: inputs on the left, output (dst) on the right. Trickier than fb
+    because outputs stack at a fixed `CELL_H` in the coil column, so a taller box needs
+    the coil-column stacking geometry widened. Operand type/role labelled inside.
 - **Popup (modal) parameter editor on element click.** Clicking an FB/move/calc/element
   opens a modal to set its parameters, instead of (or alongside) the inline inspector.
   *Feasibility: medium.* A Lit modal in the panel reusing the existing form editors
   (`_renderSeriesElement`/`_renderCoilEditor`/fb param fields) as the modal body; wire
   the canvas `onSelect*` to open it. Mostly a presentation change over existing editors.
 
-These sit after the current open work (canvas **stage C** pointer-drag; phase **4.5**
-validation UX + YAML polish). The visual round naturally bundles the two visual items
+**Editor-UX polish (card; small–medium — recorded 2026-07-17).**
+- **OR wraps the selected element.** When an element is selected and the user places an
+  OR/branch, the branch should form *around* that element — the selected element becomes
+  the first path's content — instead of an empty branch being inserted beside it.
+  *Feasibility: high.* A pure `elements.ts` helper that replaces the selected element with
+  a branch whose path 0 is `[thatElement]`; wire the palette OR tool to this when there is
+  a current selection (fall back to inserting an empty branch when nothing is selected).
+- **Bigger, square palette buttons.** The toolbar element tools should be larger — about
+  as wide as the Select button and square. Later they should adopt the same graphical
+  style as the on-canvas symbols; that styling is a *stretch* and may be skipped if it
+  complicates things. *Feasibility: high (sizing) / medium (canvas-style glyphs).*
+- **Red background on the erroring position.** In addition to the validation bar, the
+  canvas position of each error should get a red background so it is visible in place.
+  *Feasibility: medium.* `validate.ts` already yields `{ni, ri, …}`; extend an issue to
+  also carry the element/coil `steps`+index where possible, and have `render.ts` tint that
+  cell (guarded so the read-only card is unaffected). Pairs with the 4.5 validation UX.
+
+**Agreed next-up order (user, 2026-07-17):** first the **TIA-style parameter display on
+FB/move/calc blocks** (taller blocks, role labels like `PV`/`reset` inside, bound
+tags/settings to the left of the block), then the **popup (modal) parameter editor** on
+clicking an FB/output block. Everything else in this backlog stays parked until asked.
+
+These sit after the current open work (phase **4.5** validation UX + YAML polish, both
+parked by the user 2026-07-17). The visual round naturally bundles the two visual items
 above plus the earlier-noted MOVE/CALC visual polish.
 
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
