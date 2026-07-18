@@ -355,12 +355,19 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
     slots whose y-band contains the pointer, deeper wins ties, null over a gap). Drop
     inserts via `insertElementIn(steps, index)` and selects the new element. Coil drags
     still append via `hitRung`. Palette drag into OR positions validated by the user
-    2026-07-17. **Still open in 4.4 (deferred, on the list — do not start unprompted):**
-    *reorder*-drag of an existing top-level element **into/within a branch** (needs nested
-    `@pointerdown` + a cross-series move) — user wants this eventually but parked it.
-    Remove-path on the canvas is **dropped** — the user decided 2026-07-17 that deleting a
-    path via the selected branch's inspector is good enough and a canvas control would be
-    too cluttered.
+    2026-07-17.
+  - **Reorder-drag into/within a branch — done (card v0.25.0).** Dragging an *existing*
+    element now resolves to any insertion slot, top-level or inside a branch, just like the
+    palette drag. Elements at **any depth** are draggable (`onElementPointerDown` gained a
+    `steps` arg; nested hit-targets are now `@pointerdown` not `@click`); the drag resolves
+    a `SlotTarget` via `nearestTarget` over the source rung's slots (nested slot geometry is
+    now reported **always**, not only when a tool is armed) and highlights it (`placeDrop`),
+    with the source element ghosted (`dragSource`). On drop, a pure, unit-tested
+    `moveElementAcross` (elements.ts) removes the source and inserts at the target, correcting
+    the target index/path for the self-removal shift and refusing to drop an element into
+    itself; a same-series move reduces to a reorder. A press-release without moving still
+    selects (two-click popup). Cross-**rung** moves are still out of scope (drag resolves
+    within the source rung). Remove-path on the canvas stays **dropped** (inspector only).
 - **4.5 — in progress. Inline validation done (card v0.19.0).** A pure, lit-free,
   unit-tested `src/validate.ts` (`validateProgram(program) → ValidationIssue[]`) flags
   the *unambiguously-broken* things (empty/dangling tag & fb references on
