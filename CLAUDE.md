@@ -520,6 +520,13 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   resolve to the same typed value). Card: `TagDef.attribute?`, a per-input "attribute
   (optional)" field in the tag table (`_setAttribute`), carried by `normaliseForKind`.
   Tests: model round-trip/validation + the parser feature-program covers it.
+  **Attribute dropdown — done (card v0.28.0).** The attribute field is now an
+  `<input list>` + per-tag `<datalist>` populated from the *chosen source entity's*
+  real `state.attributes` keys (`_attributeKeys(source)`), so the user picks an actual
+  key instead of guessing/mistyping. This fixes the reported "shows 0" case: HA
+  attribute keys are case-sensitive (a light's is `brightness`, not `Brightness`), so a
+  mistyped name resolved to `None` → `on_unavailable`. Note brightness is 0–255 (not a
+  percentage); scale with a CALC if a % is wanted.
 
 **Timer durations with units (card UX; small).**
 - Enter timer presets as `5s` / `3m` / `1h` instead of raw ms (sub-second is pointless
