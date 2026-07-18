@@ -510,6 +510,17 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   validation, DSL round-trip, a pure scan test for the `actions` level; card validate test.
   *Note:* the coordinator edge-detection + service call is HA-side (integration test lives
   under the phcc collect-ignore); verified by the pure `actions`-level test + HA validation.
+  **Structured service-call editor — done (card v0.30.0).** The popup editor replaced the
+  raw `service` text + JSON-data inputs with **dropdowns**: pick the service from a curated
+  list, then the target entity (filtered to the service's domain), then — for option-style
+  services — one of the entity's available options read live from `state.attributes`. Backed
+  by a pure, lit-free, unit-tested `src/actions.ts` (`ACTION_SERVICES` specs mapping service
+  → `{domain, optionsAttr, valueKey}` e.g. `fan.set_preset_mode` → `preset_modes`/`preset_mode`,
+  `select.select_option` → `options`/`option`; `actionSpec`, `withService`/`withEntity`/
+  `withValue`, `actionEntity`/`actionValue`). A **"Custom…"** entry keeps the old free
+  service + raw-JSON escape hatch for anything off-list. `withService` keeps the entity when
+  the new domain matches, else clears it. The canvas action box now also shows the chosen
+  option value below the entity. Panel reads option lists via `_stateOptions(entity, attr)`.
 - **Read an entity *attribute*, not just its state — done (int v0.12.0, card v0.26.0).**
   An input tag optionally reads `state.attributes[attribute]` (e.g. a light's `brightness`,
   a climate's `current_temperature`). `model.py` Tag gained `attribute: str | None` (input-
