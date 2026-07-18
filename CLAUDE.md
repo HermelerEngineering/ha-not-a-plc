@@ -525,10 +525,17 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
     the coil column (`block.ts` `outputBlock`): operand inputs on the left (`IN` for move,
     `IN1`/`IN2` for calc, titled by the operator `MOVE`/`ADD`/`SUB`/`MUL`/`DIV`), the
     destination `OUT` on the right, the rung result (enable) into the box top-left corner.
-    Pins are centred on the coil row so the box still fits one `CELL_H` (no coil-stacking
-    refactor); a rung with a move/calc reserves more right-hand room (`OUTPUT_BLOCK_SPACE`)
-    and the coil hit-target/outline is widened to cover the box. `VIEW_WIDTH` bumped 720→760
-    for margin. Unit-tested in `test/block.test.ts`.
+    a rung with a move/calc reserves more right-hand room (`OUTPUT_BLOCK_SPACE`) and the
+    coil hit-target/outline is widened to cover the box. `VIEW_WIDTH` bumped 720→760 for
+    margin. Unit-tested in `test/block.test.ts`.
+  - **Alignment fix (card v0.22.1).** First cut jogged the power line *up* into the box top
+    and centred the box on the coil row (misaligned vs the fb blocks). Now the enable runs
+    **straight** in along the coil row (the box's top row) and the box hangs below it — same
+    as an fb — with operands stacked down the left. This needed the coil column to stack
+    **by output height** rather than a fixed `CELL_H` per output: `outputRows(output)` (calc
+    = 2 rows, move/coil = 1), a `coilTaps[]` array of each output's power-line y, and
+    `totalCoilRows` driving the rung height, the vertical bus length, and the coil
+    hit-target heights. Fixes the "line goes up first" and "bus runs too far down" reports.
 - **Popup (modal) parameter editor on element click.** Clicking an FB/move/calc/element
   opens a modal to set its parameters, instead of (or alongside) the inline inspector.
   *Feasibility: medium.* A Lit modal in the panel reusing the existing form editors
