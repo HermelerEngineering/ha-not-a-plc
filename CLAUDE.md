@@ -547,23 +547,27 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   (`_elementTitle`/`_coilTitle`). The old `.inspector` inline bar is replaced.
 
 **Editor-UX polish (card; small–medium — recorded 2026-07-17).**
-- **OR wraps the selected element.** When an element is selected and the user places an
-  OR/branch, the branch should form *around* that element — the selected element becomes
-  the first path's content — instead of an empty branch being inserted beside it.
-  *Feasibility: high.* A pure `elements.ts` helper that replaces the selected element with
-  a branch whose path 0 is `[thatElement]`; wire the palette OR tool to this when there is
-  a current selection (fall back to inserting an empty branch when nothing is selected).
-- **Bigger, square palette buttons — done (card v0.23.1).** The draggable palette tool
-  chips are now 46×46 squares (`button.chip.draggable`), roughly the Select button's width.
-  The canvas-style glyphs remain a later *stretch*. Same release: the destructive **✕
-  delete** icon buttons are now **red by default** (`button.icon`), with a `neutral`
-  variant for non-destructive icons (modal close, reorder ↑/↓), so delete reads clearly
-  different from the popup's close ✕.
-- **Red background on the erroring position.** In addition to the validation bar, the
-  canvas position of each error should get a red background so it is visible in place.
-  *Feasibility: medium.* `validate.ts` already yields `{ni, ri, …}`; extend an issue to
-  also carry the element/coil `steps`+index where possible, and have `render.ts` tint that
-  cell (guarded so the read-only card is unaffected). Pairs with the 4.5 validation UX.
+- **OR wraps the selected element — done (card v0.24.0).** Pure `elements.ts`
+  `wrapInBranch(program, ni, ri, steps, ei)` replaces the element at that position with an
+  OR branch whose first path is `[thatElement]` (a single non-empty path = valid; the user
+  adds parallel paths via the branch editor's "+ path"). A branch is left unchanged.
+  Surfaced as a **"Wrap OR"** button in the element's action row (`_elActions`), so it shows
+  in the popup (and the structure editor) for the selected element — the modal-based
+  selection made a "press OR while selected" palette flow awkward (the modal covers the
+  palette), so the action lives with the selection. Unit-tested (`test/elements.test.ts`).
+- **Bigger, square palette buttons — done (card v0.23.1; Select squared in v0.24.0).** All
+  palette buttons — the draggable tools *and* Select — are now 46×46 squares
+  (`.palette button.chip`). The canvas-style glyphs remain a later *stretch*. In v0.23.1 the
+  destructive **✕ delete** icon buttons also became **red by default** (`button.icon`), with
+  a `neutral` variant for non-destructive icons (modal close, reorder ↑/↓), so delete reads
+  clearly different from the popup's close ✕.
+- **Red background on the erroring position — done (card v0.24.0).** `validate.ts` issues
+  now carry the flagged position (`steps`+`ei` for a series element, `ci` for an output;
+  rung-level warnings carry none). `render.ts` draws a translucent-red `err-cell` rect over
+  each flagged element/output cell (via `CanvasEdit.errorEls`/`errorCoils`, pointer-
+  transparent so it never blocks a click; guarded so the read-only card is unaffected). The
+  panel feeds the positions from `validateProgram` per network in `_editConfig`. The symbol
+  shows through the tint; the validation bar still lists the details.
 
 **Agreed next-up order (user, 2026-07-17):** first the **TIA-style parameter display on
 FB/move/calc blocks** (taller blocks, role labels like `PV`/`reset` inside, bound
