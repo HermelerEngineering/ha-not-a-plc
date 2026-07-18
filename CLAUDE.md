@@ -521,15 +521,23 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
     (`layout.ts` `measureElement`) to give room; edges (single power pin row) still draw
     a compact box centred on the baseline. **Still to do:** move/calc outputs (below), and
     the *visual polish* (spacing/edge-block empty space) once the user eyeballs it.
-  - **Move/calc outputs — TODO (next, card v0.22.0).** Same idea for the REAL outputs in
-    the coil column: inputs on the left, output (dst) on the right. Trickier than fb
-    because outputs stack at a fixed `CELL_H` in the coil column, so a taller box needs
-    the coil-column stacking geometry widened. Operand type/role labelled inside.
+  - **Move/calc outputs — done (card v0.22.0).** Same TIA face for the REAL outputs in
+    the coil column (`block.ts` `outputBlock`): operand inputs on the left (`IN` for move,
+    `IN1`/`IN2` for calc, titled by the operator `MOVE`/`ADD`/`SUB`/`MUL`/`DIV`), the
+    destination `OUT` on the right, the rung result (enable) into the box top-left corner.
+    Pins are centred on the coil row so the box still fits one `CELL_H` (no coil-stacking
+    refactor); a rung with a move/calc reserves more right-hand room (`OUTPUT_BLOCK_SPACE`)
+    and the coil hit-target/outline is widened to cover the box. `VIEW_WIDTH` bumped 720→760
+    for margin. Unit-tested in `test/block.test.ts`.
 - **Popup (modal) parameter editor on element click.** Clicking an FB/move/calc/element
   opens a modal to set its parameters, instead of (or alongside) the inline inspector.
   *Feasibility: medium.* A Lit modal in the panel reusing the existing form editors
   (`_renderSeriesElement`/`_renderCoilEditor`/fb param fields) as the modal body; wire
   the canvas `onSelect*` to open it. Mostly a presentation change over existing editors.
+  **Note (user, 2026-07-18):** for an `fb` element the modal must also let the user edit
+  the referenced instance's **parameters** (preset/PV/reset/…), not just which instance —
+  i.e. surface the "Function blocks" per-instance param editor inline in the popup, so you
+  don't have to declare/edit the block separately before placing it.
 
 **Editor-UX polish (card; small–medium — recorded 2026-07-17).**
 - **OR wraps the selected element.** When an element is selected and the user places an
