@@ -527,6 +527,15 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   attribute keys are case-sensitive (a light's is `brightness`, not `Brightness`), so a
   mistyped name resolved to `None` → `on_unavailable`. Note brightness is 0–255 (not a
   percentage); scale with a CALC if a % is wanted.
+  **Any entity selectable for a REAL input — done (card v0.29.0).** The input source
+  picker now lists **all** entities (new `np-all-entities` datalist, `_entityIds(null)`)
+  instead of only the type's domains, because a REAL input can read a numeric attribute
+  off any entity (e.g. a light's `brightness`) — previously a `light` only appeared while
+  the tag type was BOOL. `inferType` now returns `TagType | null`, returning `null` for
+  `AMBIGUOUS_DOMAINS` (light/fan/cover/climate/media_player/valve — boolean state but
+  numeric attributes), so binding one **keeps** the user's chosen type instead of forcing
+  BOOL; `_setSource` uses `inferType(v) ?? tag.type`. Confident domains still infer
+  (numeric → REAL, else BOOL).
 
 **Timer durations with units (card UX; small).**
 - Enter timer presets as `5s` / `3m` / `1h` instead of raw ms (sub-second is pointless
