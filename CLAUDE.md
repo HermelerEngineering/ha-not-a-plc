@@ -628,14 +628,42 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   panel feeds the positions from `validateProgram` per network in `_editConfig`. The symbol
   shows through the tint; the validation bar still lists the details.
 
-**Agreed next-up order (user, 2026-07-17):** first the **TIA-style parameter display on
-FB/move/calc blocks** (taller blocks, role labels like `PV`/`reset` inside, bound
-tags/settings to the left of the block), then the **popup (modal) parameter editor** on
-clicking an FB/output block. Everything else in this backlog stays parked until asked.
+**Editor layout & workflow (card; recorded 2026-07-18) — not started.** A batch of
+editor-page ergonomics, all card-side (`panel.ts` + CSS, a couple touch render/layout).
+Grouped roughly in the order they'd logically be tackled:
+- **Split-scroll layout.** Pin the tag list + toolbar/palette **static at the top**; put the
+  networks/canvas in an **independently scrollable** field below. *Feasibility: high* — a
+  sticky header region + an `overflow:auto` scroll container around the SVG networks.
+- **Remove the left live-preview pane.** Redundant now that the editor canvas itself renders
+  the program live — it's showing the same thing twice. *Feasibility: high* — drop the
+  preview column, keep the single editable live canvas.
+- **Collapsible Tag list and FB list.** A large list eats the screen; add a collapse/expand
+  toggle per section (ideally remembering open/closed). *Feasibility: high.*
+- **FB list as a table.** Render the function-block list like the **tag table** — name on the
+  left, then type + params in columns — instead of the current row form. *Feasibility: high.*
+- **FB placement without pre-declaring.** Today an fb must be declared before it can be
+  placed, and the palette fb tool is even **hidden** when no instance exists. Change so you can
+  **always** drag/click an fb onto the ladder and then **create/configure the instance in the
+  popup** (choose type + params inline — the popup already embeds the fb params via
+  `_renderFbInstancePanel`). *Feasibility: medium* — on drop, auto-create an instance
+  (generate a name, `addFb`, default type) and open its popup; `validate.ts` already flags an
+  unset/dangling instance until configured. Bundle with the FB-list-as-table item.
+- **Rename the `coil` tag kind to "output" in the UI.** Display label only — keep the IR/DSL/
+  schema kind `coil` for compatibility (and mind that the rung-*output* element is also called
+  a coil; scope the relabel to the tag-kind picker + visible strings). *Feasibility: high.*
+- **Canvas zoom presets (small/medium/large).** A scale control so large networks fit on
+  screen. *Feasibility: high* — wrap each network SVG in a scale (CSS `zoom`/`transform` or a
+  scaled `viewBox`); presets pick a factor. Pure layout geometry is unaffected (the SVG
+  scales); only pointer→user-space math must divide by the factor.
 
-These sit after the current open work (phase **4.5** validation UX + YAML polish, both
-parked by the user 2026-07-17). The visual round naturally bundles the two visual items
-above plus the earlier-noted MOVE/CALC visual polish.
+**Docs — update both repos' `README.md`.** Both are still the initial version. Refresh at the
+end of a release round (don't block every change): what the integration/card are now, install
+via HACS, the editor panel, supported elements/outputs, current phase status.
+
+**Agreed next-up order:** the 2026-07-17 visual round (TIA parameter display + popup editor)
+is **done** (card v0.21.0–v0.24.x, v0.30.0). Phase **4.5** (validation UX + YAML export/import
+polish) remains parked by the user (2026-07-17). The editor layout & workflow batch above and
+the earlier backlog items stay parked until the user picks the next one.
 
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
 
