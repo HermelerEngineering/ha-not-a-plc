@@ -558,10 +558,11 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   `wrapInBranch(program, ni, ri, steps, ei)` replaces the element at that position with an
   OR branch whose first path is `[thatElement]` (a single non-empty path = valid; the user
   adds parallel paths via the branch editor's "+ path"). A branch is left unchanged.
-  Surfaced as a **"Wrap OR"** button in the element's action row (`_elActions`), so it shows
-  in the popup (and the structure editor) for the selected element — the modal-based
-  selection made a "press OR while selected" palette flow awkward (the modal covers the
-  palette), so the action lives with the selection. Unit-tested (`test/elements.test.ts`).
+  Surfaced two ways: a **"Wrap OR"** button in the element's action row (`_elActions`, shown
+  in the popup and structure editor), and — since the two-click popup (v0.24.1) means a
+  first click only *selects* — **pressing the OR palette tool while an element is selected**
+  wraps it (`_maybeWrapSelection` in `_placeUp`: a press-release of the OR/branch tool with a
+  non-branch element selected wraps instead of arming). Unit-tested (`test/elements.test.ts`).
 - **Bigger, square palette buttons — done (card v0.23.1; Select squared in v0.24.0).** All
   palette buttons — the draggable tools *and* Select — are now 46×46 squares
   (`.palette button.chip`). The canvas-style glyphs remain a later *stretch*. In v0.23.1 the
