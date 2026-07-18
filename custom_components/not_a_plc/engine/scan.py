@@ -29,6 +29,7 @@ from .model import (
     IMPLEMENTED_COIL_MODES,
     LATCH_TYPES,
     TIMER_TYPES,
+    Action,
     Branch,
     Calc,
     Compare,
@@ -62,15 +63,26 @@ class ScanResult(dict[str, OutputValue]):
     additionally carries each function-block instance's state in ``.fbs`` — which
     the caller holds in RAM and passes back in on the next scan via the ``fbs``
     argument, keeping ``evaluate`` pure.
+
+    ``.actions`` maps a rung key (``"<network id>/<rung id>"``) to whether that
+    rung — which has at least one service-call (``Action``) output — is energised
+    this scan. The coordinator compares against the previous scan to fire each
+    action's service on the rising edge (a level here, edge detection in the HA
+    layer, so ``evaluate`` stays pure).
     """
 
     fbs: dict[str, dict[str, Any]]
+    actions: dict[str, bool]
 
     def __init__(
-        self, outputs: dict[str, OutputValue], fbs: dict[str, dict[str, Any]]
+        self,
+        outputs: dict[str, OutputValue],
+        fbs: dict[str, dict[str, Any]],
+        actions: dict[str, bool] | None = None,
     ) -> None:
         super().__init__(outputs)
         self.fbs = fbs
+        self.actions = actions or {}
 
 
 def _truthy(value: Any) -> bool:
@@ -381,11 +393,18 @@ def evaluate(
 
     fb_prev = fbs or {}
     fb_new: dict[str, dict[str, Any]] = {}
+    # Per-rung energised level for rungs with a service-call output; the coordinator
+    # turns this into a rising-edge fire (see ScanResult.actions).
+    actions: dict[str, bool] = {}
 
     for network in program.networks:
         for rung in network.rungs:
             energised = _solve_rung(rung.series, values, now, program, fb_prev, fb_new)
+            if any(isinstance(c, Action) for c in rung.coils):
+                actions[f"{network.id}/{rung.id}"] = energised
             for output in rung.coils:
+                if isinstance(output, Action):
+                    continue  # a side effect fired by the coordinator, not a value
                 if isinstance(output, Move):
                     # Copy the REAL source into the destination when energised;
                     # otherwise leave the destination at its previous value.
@@ -422,4 +441,4 @@ def evaluate(
                 outputs[output.tag] = new
                 values[output.tag] = new
 
-    return ScanResult(outputs, fb_new)
+    return ScanResult(outputs, fb_new, actions)

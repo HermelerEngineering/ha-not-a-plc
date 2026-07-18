@@ -34,7 +34,7 @@ from .const import (
     STORAGE_KEY_PREFIX,
     STORAGE_VERSION,
 )
-from .engine import Program, ProgramError, evaluate
+from .engine import Action, Program, ProgramError, evaluate
 
 
 class LadderCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -53,6 +53,9 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self.program = program
         self._previous: dict[str, Any] = {}
+        # Previous scan's per-rung energised level for service-call outputs, so we
+        # fire each action only on the rising edge (see _fire_actions).
+        self._prev_actions: dict[str, bool] = {}
         # Function-block instance state, carried across scans in RAM (never to
         # disk per scan). Each entry is that instance's state incl. its output Q.
         self._fb_state: dict[str, dict[str, Any]] = {}
@@ -192,7 +195,9 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_inputs = image
 
         await self._write_on_change(outputs)
+        await self._fire_actions(result.actions)
         self._previous = outputs
+        self._prev_actions = result.actions
         if self._retained_tags:
             snapshot = self._retained_snapshot()
             # Only schedule a (debounced) write when a retained bit changed.
@@ -227,6 +232,28 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 service = "turn_on" if new else "turn_off"
                 data = {"entity_id": writes.target}
             await self.hass.services.async_call(domain, service, data, blocking=False)
+
+    async def _fire_actions(self, actions: dict[str, bool]) -> None:
+        """Fire each service-call output on the rising edge of its rung.
+
+        ``actions`` is the per-rung energised level from this scan. An action fires
+        when its rung transitions not-energised -> energised (a one-shot), so a scene
+        or preset is activated once when the condition becomes true, not every scan.
+        """
+        for net in self.program.networks:
+            for rung in net.rungs:
+                calls = [c for c in rung.coils if isinstance(c, Action)]
+                if not calls:
+                    continue
+                key = f"{net.id}/{rung.id}"
+                new = actions.get(key, False)
+                if not new or self._prev_actions.get(key, False):
+                    continue  # not a rising edge
+                for action in calls:
+                    domain, _, service = action.service.partition(".")
+                    await self.hass.services.async_call(
+                        domain, service, dict(action.data), blocking=False
+                    )
 
     # --- Status view --------------------------------------------------------
 

@@ -212,3 +212,42 @@ def test_attribute_must_be_non_empty_string() -> None:
     data["tags"]["a"]["attribute"] = ""
     with pytest.raises(ProgramError, match="'attribute' must be a non-empty string"):
         Program.from_dict(data)
+
+
+def test_action_output_round_trip() -> None:
+    data = _minimal()
+    data["networks"][0]["rungs"][0]["coils"] = [
+        {"type": "coil", "tag": "out"},
+        {
+            "type": "action",
+            "service": "scene.turn_on",
+            "data": {"entity_id": "scene.movie"},
+        },
+    ]
+    program = Program.from_dict(data)
+    again = Program.from_dict(program.to_dict())
+    assert again.to_dict() == program.to_dict()
+    action = program.networks[0].rungs[0].coils[1]
+    assert action.to_dict() == {
+        "type": "action",
+        "service": "scene.turn_on",
+        "data": {"entity_id": "scene.movie"},
+    }
+
+
+def test_action_needs_domain_service() -> None:
+    data = _minimal()
+    data["networks"][0]["rungs"][0]["coils"] = [
+        {"type": "action", "service": "notaservice"}
+    ]
+    with pytest.raises(ProgramError, match="action 'service' must be"):
+        Program.from_dict(data)
+
+
+def test_action_data_must_be_object() -> None:
+    data = _minimal()
+    data["networks"][0]["rungs"][0]["coils"] = [
+        {"type": "action", "service": "scene.turn_on", "data": ["nope"]}
+    ]
+    with pytest.raises(ProgramError, match="action 'data' must be an object"):
+        Program.from_dict(data)

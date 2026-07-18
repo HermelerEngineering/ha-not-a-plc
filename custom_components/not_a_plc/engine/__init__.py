@@ -10,11 +10,12 @@ Public API:
 from __future__ import annotations
 
 from .errors import ProgramError
-from .model import Program
+from .model import Action, Program
 from .parser import program_from_text, program_to_text
 from .scan import evaluate
 
 __all__ = [
+    "Action",
     "Program",
     "ProgramError",
     "evaluate",

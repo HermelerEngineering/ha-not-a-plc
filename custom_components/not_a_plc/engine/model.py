@@ -563,8 +563,42 @@ class Calc:
         return cls(op=op, dst=dst, a=operands["a"], b=operands["b"])
 
 
-# A rung output is a boolean coil, a REAL move, or a REAL calc.
-Output = Coil | Move | Calc
+@dataclass(slots=True)
+class Action:
+    """A service-call output: call a Home Assistant service with static data on the
+    rising edge of the rung (when it becomes energised).
+
+    Generalises the coil write to an arbitrary one-shot side effect — activate a
+    scene (``scene.turn_on``), select an option (``select.select_option``), set a
+    preset mode (``climate.set_preset_mode``), etc. ``service`` is ``domain.service``
+    and ``data`` is the static service-call payload (e.g. the target ``entity_id``
+    plus an ``option`` / ``preset_mode``). Stateless in the engine (no tag); the
+    coordinator detects the edge and performs the call.
+    """
+
+    service: str  # "domain.service"
+    data: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"type": "action", "service": self.service, "data": self.data}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any], where: str) -> Action:
+        service = _get(data, "service", where)
+        _require(
+            isinstance(service, str) and "." in service,
+            f"{where}: action 'service' must be 'domain.service'",
+        )
+        payload = data.get("data", {})
+        _require(
+            isinstance(payload, dict),
+            f"{where}: action 'data' must be an object",
+        )
+        return cls(service=service, data=dict(payload))
+
+
+# A rung output is a boolean coil, a REAL move, a REAL calc, or a service call.
+Output = Coil | Move | Calc | Action
 
 
 def _output_from_dict(data: dict[str, Any], where: str) -> Output:
@@ -573,6 +607,8 @@ def _output_from_dict(data: dict[str, Any], where: str) -> Output:
         return Move.from_dict(data, where)
     if data.get("type") == "calc":
         return Calc.from_dict(data, where)
+    if data.get("type") == "action":
+        return Action.from_dict(data, where)
     return Coil.from_dict(data, where)
 
 
@@ -793,6 +829,8 @@ class Program:
                         check_element(el, where)
                 for c in r.coils:
                     rw = f"network '{n.id}' rung '{r.id}'"
+                    if isinstance(c, Action):
+                        continue  # a service call references no tags
                     if isinstance(c, Move):
                         check_real_dst(c.dst, "move", rw)
                         if isinstance(c.src, str):

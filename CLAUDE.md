@@ -494,13 +494,22 @@ in tags/fbs cover a/b. Tests: `tests/test_engine_move.py` (calc cases), card
 Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
 
 **Phase 5 — extended I/O (new; mostly backend + small card).**
-- **Write/activate an entity preset or scene.** A rung output that calls a service
-  with static data when energised — activate a scene (`scene.turn_on`), select an
-  option (`select.select_option`), set a preset mode (`fan`/`climate.set_preset_mode`).
-  *Feasibility: high.* It generalises the Stage-2 coil write: a "service-call output"
-  with a fixed `service` + static `data` (target + option/scene). Model: a new output
-  kind (like `move`) or an extension of the BOOL coil `writes` with static data.
-  Fires on change / rising edge, change-gated in the coordinator (already the pattern).
+- **Write/activate an entity preset or scene — done (int v0.13.0, card v0.27.0).** A new
+  rung output kind **`Action`** (`{"type":"action","service":"domain.service","data":{…}}`)
+  calls an HA service with static data on the rung's **rising edge** — activate a scene
+  (`scene.turn_on`), select an option (`select.select_option`), set a preset
+  (`climate.set_preset_mode`), etc. `Output = Coil | Move | Calc | Action`; `_output_from_dict`
+  + schema `action` def + DSL `( do domain.service {json} )`. The engine stays pure: it
+  surfaces a per-rung **energised level** on `ScanResult.actions` (keyed `"<net>/<rung>"`)
+  for rungs with an action; the coordinator (`_fire_actions`, holding `_prev_actions`)
+  detects the false→true edge and calls the service (one-shot, so a scene fires once when
+  the condition becomes true). No output-image value (a side effect, not a tag). Card:
+  `ActionEl`/`isAction`/`newAction`, render a "do <service>" box (target below), palette
+  `do` tool + `+ Service` button, inspector (service + data-JSON), `validate.ts` flags a
+  missing `domain.service`, tag/fb reference walks skip actions. Tests: model round-trip +
+  validation, DSL round-trip, a pure scan test for the `actions` level; card validate test.
+  *Note:* the coordinator edge-detection + service call is HA-side (integration test lives
+  under the phcc collect-ignore); verified by the pure `actions`-level test + HA validation.
 - **Read an entity *attribute*, not just its state — done (int v0.12.0, card v0.26.0).**
   An input tag optionally reads `state.attributes[attribute]` (e.g. a light's `brightness`,
   a climate's `current_temperature`). `model.py` Tag gained `attribute: str | None` (input-

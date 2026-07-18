@@ -120,6 +120,41 @@ def test_calc_output_dsl_round_trip() -> None:
     assert program_from_text(text).to_dict() == program.to_dict()
 
 
+def test_action_output_dsl_round_trip() -> None:
+    program = Program.from_dict(
+        {
+            "tags": {"en": {"kind": "input", "source": "binary_sensor.en"}},
+            "networks": [
+                {
+                    "id": "n1",
+                    "rungs": [
+                        {
+                            "id": "r1",
+                            "series": [{"type": "contact", "tag": "en"}],
+                            "coils": [
+                                {
+                                    "type": "action",
+                                    "service": "scene.turn_on",
+                                    "data": {"entity_id": "scene.movie"},
+                                },
+                                {
+                                    "type": "action",
+                                    "service": "fan.turn_on",
+                                    "data": {},
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    text = program_to_text(program)
+    assert '( do scene.turn_on {"entity_id":"scene.movie"} )' in text
+    assert "( do fan.turn_on )" in text
+    assert program_from_text(text).to_dict() == program.to_dict()
+
+
 def _feature_program() -> Program:
     """A program exercising every DSL feature: NOT, branch, NC, S/R, meta, titles,
     true_states, writes, retain, hold."""

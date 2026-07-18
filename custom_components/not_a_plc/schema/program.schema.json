@@ -71,8 +71,19 @@
       "oneOf": [
         { "$ref": "#/$defs/coil" },
         { "$ref": "#/$defs/move" },
-        { "$ref": "#/$defs/calc" }
+        { "$ref": "#/$defs/calc" },
+        { "$ref": "#/$defs/action" }
       ]
+    },
+    "action": {
+      "type": "object",
+      "required": ["type", "service"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "action" },
+        "service": { "type": "string" },
+        "data": { "type": "object" }
+      }
     },
     "move": {
       "type": "object",
