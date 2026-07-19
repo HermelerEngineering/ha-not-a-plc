@@ -696,12 +696,12 @@ follow. Ordered so the two **regressions/bugs** come first — they block or con
 used to work — then the canvas-interaction wishes, then rendering.
 
 **Bugs / regressions (do these first).**
-- **Tag dropdowns no longer offer `instance.ET` — regression.** Since tag selection became a
-  `<select>` (4.2/4.3), a compare operand can no longer be set to a function-block output like
-  `t1.ET`; it is only reachable via *edit as text*. The IR and backend already accept dotted
-  operands (int v0.6.0) — the UI just never lists them. **Fix:** `_tagSelect` (or a variant) must
-  include the available `instance.<OUTPUT>` refs alongside tag names, wherever a dotted ref is
-  legal (compare operands today; contacts too once the item below lands). *Feasibility: high.*
+- **Tag dropdowns no longer offer `instance.ET` — fixed (card v0.35.0).** Since tag selection
+  became a `<select>` (4.2/4.3), a compare's **left** operand could no longer be set to a
+  function-block output like `t1.ET` (the right operand, and move/calc operands, stayed free-text
+  via `_parseRight`, so those were still typeable). Fixed by `_realOperands()` = REAL tag names +
+  `fbOutputRefs(program)`, used for the compare-left dropdown. *(If a contact ever accepts a
+  dotted BOOL ref — see the fb-pins item below — it needs the same treatment.)*
 - **Rung titles are not drawn; the network title appears twice.** On the canvas the user sees the
   network name repeated a second time, slightly smaller, and never sees rung titles. Cause: the
   panel's DOM `.cv-net-head` shows `net.id` + `net.title` *and* `renderNetwork` draws
@@ -749,9 +749,13 @@ weekday". Decisions taken (user, 2026-07-19/20):
 - Tests: `tests/test_engine_clock.py` (8 cases — availability without placement, every field,
   ISO weekday, missing clock, no params, unknown output, placement rejected, fb state exposed).
 
-**Card side still to do:** add `CLOCK` to `FB_TYPES` (no params in `fbFields`), and — the
-blocker for actually using it — the **tag-dropdown regression** below, so `clock.TOD` can be
-picked as a compare operand instead of only via *edit as text*.
+**Card side — done (card v0.35.0).** `fbs.ts` gained `SOURCE_TYPES`/`isSourceType`,
+`fbNumericOutputs(type)` (mirrors the engine) and `fbOutputRefs(program)` (every
+`instance.<OUTPUT>` a program offers). `CLOCK` is in `FB_TYPES` (so it can be created in the FB
+table, with no params) but is **filtered out of the palette chips** — it is never placed. The
+compare's left operand now uses `_realOperands()` = REAL tags **+** `fbOutputRefs`, which fixes
+the dropdown regression (see below). `validate.ts` additionally flags an output the block does
+not have (with the valid ones as a hint) and a source block placed in a rung.
 
 *Original request (2026-07-19), for context:*
 Make the current time available so a rung can compare against it (e.g. "after 22:30 on a
