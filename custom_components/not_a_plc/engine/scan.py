@@ -28,6 +28,7 @@ from .model import (
     COUNTER_TYPES,
     IMPLEMENTED_COIL_MODES,
     LATCH_TYPES,
+    SOURCE_TYPES,
     TIMER_TYPES,
     Action,
     Branch,
@@ -311,6 +312,52 @@ def _solve_latch(
     return q
 
 
+def _clock_fields(now: datetime) -> dict[str, float]:
+    """The local time/date fields a CLOCK block exposes, as REAL values.
+
+    ``now`` is whatever the caller injected; the HA layer passes local time, so
+    these read as wall-clock values. ``TOD`` is minutes since midnight (0-1439),
+    which turns a window spanning midnight into a single comparison. ``WD`` is the
+    ISO weekday: 1 = Monday .. 7 = Sunday.
+    """
+    return {
+        "H": float(now.hour),
+        "M": float(now.minute),
+        "S": float(now.second),
+        "TOD": float(now.hour * 60 + now.minute),
+        "WD": float(now.isoweekday()),
+        "D": float(now.day),
+        "MO": float(now.month),
+        "Y": float(now.year),
+    }
+
+
+def _solve_sources(
+    program: Program,
+    values: dict[str, Any],
+    now: datetime | None,
+    fb_new: dict[str, dict[str, Any]],
+) -> None:
+    """Solve the source blocks (CLOCK) once, before any rung.
+
+    A source block has no rung input and no state, so it is not placed as an ``fb``
+    element: declaring the instance is enough. Its outputs are injected into
+    ``values`` up front, so every rung in the scan sees the same, frozen reading —
+    the time cannot change midway through a scan.
+    """
+    for name, block in program.fbs.items():
+        if block.type not in SOURCE_TYPES:
+            continue
+        if now is None:
+            raise ProgramError(f"function block '{name}' ({block.type}) needs a clock")
+        fields = _clock_fields(now)
+        for out, value in fields.items():
+            values[f"{name}.{out}"] = value
+        # Mirror into the block state so the coordinator can publish it (and the
+        # card colour it) the same way it does for timer ET / counter CV.
+        fb_new[name] = {out.lower(): value for out, value in fields.items()}
+
+
 def _solve_rung(
     elements: list[Element],
     values: dict[str, Any],
@@ -393,6 +440,9 @@ def evaluate(
 
     fb_prev = fbs or {}
     fb_new: dict[str, dict[str, Any]] = {}
+    # Source blocks (CLOCK) are read once up front, so the whole scan sees one
+    # frozen reading and their outputs work without placing an `fb` element.
+    _solve_sources(program, values, now, fb_new)
     # Per-rung energised level for rungs with a service-call output; the coordinator
     # turns this into a rising-edge fire (see ScanResult.actions).
     actions: dict[str, bool] = {}

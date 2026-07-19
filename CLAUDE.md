@@ -724,7 +724,36 @@ used to work — then the canvas-interaction wishes, then rendering.
   coil write exist, or keep the tag-binding model and just make the declaration easier to fill in
   from the popup. *Feasibility: medium, but decide the model first.*
 
-**Clock / calendar in the program (backend + card) — requested 2026-07-19.**
+**Clock / calendar — backend done (int v0.14.0); card side pending.**
+A **`CLOCK`** function-block type exposes the current **local** time/date as REAL outputs
+referenced `instance.<OUTPUT>`: `H` (0–23), `M`, `S`, **`TOD`** (minutes since midnight,
+0–1439 — makes a window spanning midnight one comparison), `WD` (ISO weekday, 1 = Mon …
+7 = Sun), `D`, `MO`, `Y`. So `[ clock.TOD >= 1350 ] [ clock.WD <= 5 ]` = "after 22:30 on a
+weekday". Decisions taken (user, 2026-07-19/20):
+- Named **`CLOCK`**, not `TIME` (which is already a tag *type*); pins uppercase like `Q`/`ET`/`CV`.
+- **Declare once, use anywhere — option (a).** New `SOURCE_TYPES` in `model.py`: a source block
+  has no rung input and no state, so `scan.py` `_solve_sources` solves it **once at the start of
+  each scan** (before any rung), injecting `instance.<OUT>` into `values`. The whole scan
+  therefore sees one *frozen* reading. Placing a `CLOCK` as an `fb` element is **rejected** by
+  validation with a message pointing at the outputs. Rejected the alternative of a built-in
+  `CLOCK` needing no declaration: it would be a special case in validation, rename, the DSL, the
+  reference walks and the dropdowns, plus a reserved word that could collide with a user name.
+- **Coordinator now passes `dt_util.now()` (tz-aware local)** instead of `utcnow()`, so the
+  fields are wall-clock. Timers are unaffected — they use `now.timestamp()`, the same absolute
+  epoch either way, continuous across DST.
+- `_fb_numeric_outputs` is now public **`fb_numeric_outputs`** (exported from `engine`), and
+  `state_image` publishes each block's numeric outputs generically through it (replacing the
+  hardcoded `et`/`cv`), so CLOCK fields reach the card with no further change. A source block has
+  no `Q`, so `image[name]` is only set when the state has one.
+- No parser change was needed: `fb clock = CLOCK` and dotted operands already round-trip.
+- Tests: `tests/test_engine_clock.py` (8 cases — availability without placement, every field,
+  ISO weekday, missing clock, no params, unknown output, placement rejected, fb state exposed).
+
+**Card side still to do:** add `CLOCK` to `FB_TYPES` (no params in `fbFields`), and — the
+blocker for actually using it — the **tag-dropdown regression** below, so `clock.TOD` can be
+picked as a compare operand instead of only via *edit as text*.
+
+*Original request (2026-07-19), for context:*
 Make the current time available so a rung can compare against it (e.g. "after 22:30 on a
 weekday"). User's proposal: a function-block instance exposing `h` (24h), `m`, `s`, `weekday`
 (1–7 = Mon–Sun), optionally date fields. **This fits the existing machinery well:**

@@ -47,21 +47,36 @@ COMPARE_OPS: frozenset[str] = frozenset({"GT", "GE", "LT", "LE", "EQ", "NE"})
 TIMER_TYPES: frozenset[str] = frozenset({"TON", "TOF", "TP"})
 COUNTER_TYPES: frozenset[str] = frozenset({"CTU", "CTD"})
 LATCH_TYPES: frozenset[str] = frozenset({"SR", "RS"})
+# Source blocks have no rung input and no state: they are solved once at the start
+# of every scan, so their outputs are usable without placing an `fb` element.
+SOURCE_TYPES: frozenset[str] = frozenset({"CLOCK"})
 KNOWN_FB_TYPES: frozenset[str] = (
-    frozenset({"R_TRIG", "F_TRIG"}) | TIMER_TYPES | COUNTER_TYPES | LATCH_TYPES
+    frozenset({"R_TRIG", "F_TRIG"})
+    | TIMER_TYPES
+    | COUNTER_TYPES
+    | LATCH_TYPES
+    | SOURCE_TYPES
 )
 
+# The local-time fields a CLOCK block exposes. TOD ("time of day", minutes since
+# midnight, 0-1439) makes a window spanning midnight a single comparison; WD is
+# the ISO weekday, 1 = Monday .. 7 = Sunday.
+CLOCK_OUTPUTS: frozenset[str] = frozenset({"H", "M", "S", "TOD", "WD", "D", "MO", "Y"})
 
-def _fb_numeric_outputs(fb_type: str) -> frozenset[str]:
+
+def fb_numeric_outputs(fb_type: str) -> frozenset[str]:
     """The REAL outputs a function block exposes for use in a comparator.
 
     Referenced as ``instance.<NAME>`` (e.g. ``t1.ET`` / ``c1.CV``). Timers expose
-    the elapsed time ``ET``; counters expose their count ``CV``.
+    the elapsed time ``ET``; counters expose their count ``CV``; a CLOCK exposes
+    the current local time/date fields.
     """
     if fb_type in TIMER_TYPES:
         return frozenset({"ET"})
     if fb_type in COUNTER_TYPES:
         return frozenset({"CV"})
+    if fb_type == "CLOCK":
+        return CLOCK_OUTPUTS
     return frozenset()
 
 
@@ -320,6 +335,8 @@ class FunctionBlock:
                 isinstance(reset, str) and reset,
                 f"{where}: a latch needs a 'reset' tag name",
             )
+        elif type_ in SOURCE_TYPES:
+            _require(not params, f"{where}: a {type_} block takes no parameters")
         return cls(type=type_, params=params)
 
 
@@ -768,7 +785,7 @@ class Program:
                     f"{where}: compare references unknown fb instance '{inst}'",
                 )
                 _require(
-                    out in _fb_numeric_outputs(self.fbs[inst].type),
+                    out in fb_numeric_outputs(self.fbs[inst].type),
                     f"{where}: fb '{inst}' has no numeric output '{out}'",
                 )
                 return
@@ -824,6 +841,14 @@ class Program:
                         _require(
                             el.instance in self.fbs,
                             f"{where}: unknown function-block instance '{el.instance}'",
+                        )
+                        # A source block (CLOCK) has no rung input: declaring it is
+                        # enough, its outputs are read via `instance.<OUTPUT>`.
+                        _require(
+                            self.fbs[el.instance].type not in SOURCE_TYPES,
+                            f"{where}: a {self.fbs[el.instance].type} block is not "
+                            f"placed in a rung — reference its outputs instead "
+                            f"(e.g. '{el.instance}.TOD')",
                         )
                     else:
                         check_element(el, where)

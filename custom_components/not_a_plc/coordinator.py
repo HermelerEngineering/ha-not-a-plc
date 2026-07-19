@@ -34,7 +34,7 @@ from .const import (
     STORAGE_KEY_PREFIX,
     STORAGE_VERSION,
 )
-from .engine import Action, Program, ProgramError, evaluate
+from .engine import Action, Program, ProgramError, evaluate, fb_numeric_outputs
 
 
 class LadderCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -183,7 +183,10 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             result = evaluate(
                 self.program,
                 image,
-                now=dt_util.utcnow(),
+                # Local (tz-aware) time, so a CLOCK block reads wall-clock hours
+                # and weekdays. Timers are unaffected: they use ``.timestamp()``,
+                # the same absolute epoch either way, continuous across DST.
+                now=dt_util.now(),
                 previous=self._previous,
                 fbs=self._fb_state,
             )
@@ -268,12 +271,16 @@ class LadderCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.data:
             image.update(self.data)
         # Expose each function block's output Q (so the card can colour fb
-        # elements) plus its numeric outputs (timer ET, counter CV) under
-        # ``instance.ET`` / ``instance.CV`` (so the card can colour compares on them).
+        # elements) plus its numeric outputs under ``instance.<OUTPUT>`` (timer ET,
+        # counter CV, CLOCK time fields) so the card can colour compares on them.
+        # A source block (CLOCK) has no Q — it is never placed in a rung.
         for name, st in self._fb_state.items():
-            image[name] = bool(st.get("q", False))
-            if "et" in st:
-                image[f"{name}.ET"] = st["et"]
-            if "cv" in st:
-                image[f"{name}.CV"] = st["cv"]
+            if "q" in st:
+                image[name] = bool(st["q"])
+            block = self.program.fbs.get(name)
+            if block is None:
+                continue
+            for out in fb_numeric_outputs(block.type):
+                if (value := st.get(out.lower())) is not None:
+                    image[f"{name}.{out}"] = value
         return image

@@ -112,7 +112,18 @@
       "required": ["type"],
       "properties": {
         "type": {
-          "enum": ["R_TRIG", "F_TRIG", "TON", "TOF", "TP", "CTU", "CTD", "SR", "RS"]
+          "enum": [
+            "R_TRIG",
+            "F_TRIG",
+            "TON",
+            "TOF",
+            "TP",
+            "CTU",
+            "CTD",
+            "SR",
+            "RS",
+            "CLOCK"
+          ]
         },
         "preset_ms": { "type": "integer", "exclusiveMinimum": 0 },
         "pv": { "type": "integer", "exclusiveMinimum": 0 },

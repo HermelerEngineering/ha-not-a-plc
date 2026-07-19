@@ -10,7 +10,7 @@ Public API:
 from __future__ import annotations
 
 from .errors import ProgramError
-from .model import Action, Program
+from .model import Action, Program, fb_numeric_outputs
 from .parser import program_from_text, program_to_text
 from .scan import evaluate
 
@@ -19,6 +19,7 @@ __all__ = [
     "Program",
     "ProgramError",
     "evaluate",
+    "fb_numeric_outputs",
     "program_from_text",
     "program_to_text",
 ]
