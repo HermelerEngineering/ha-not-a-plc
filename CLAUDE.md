@@ -559,12 +559,23 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   BOOL; `_setSource` uses `inferType(v) ?? tag.type`. Confident domains still infer
   (numeric → REAL, else BOOL).
 
-**Timer durations with units (card UX; small).**
-- Enter timer presets as `5s` / `3m` / `1h` instead of raw ms (sub-second is pointless
-  given the ~500 ms min cycle). *Feasibility: high.* Keep `preset_ms` (ms) as the
-  canonical IR; the card's fb-param editor parses `5s`→5000 / `3m`→180000 / `1h`→
-  3600000 and formats back with a unit (pure `parseDuration`/`formatDuration` helpers,
-  unit-tested). Optionally the DSL accepts a unit suffix too. Backend unchanged.
+**Timer durations with units — done (card v0.34.0).** Timer presets are entered and shown
+as `500ms` / `5s` / `3m` / `1h` instead of raw ms. `preset_ms` (ms) stays the canonical IR
+and the backend is untouched; a pure, lit-free, unit-tested `src/duration.ts`
+(`parseDuration` / `formatDuration`) translates for the editor only. A **bare number means
+seconds** (sub-second is pointless given the ~500 ms min cycle). `fbFields` gained a
+`duration` field kind (timer preset label is now just "preset"); `_renderFbParam` renders a
+text input that formats with the largest exactly-dividing unit and **keeps the previous value
+on an unparseable entry** (reverts the input) rather than clearing it. The DSL was left
+alone (still raw ms).
+
+**Per-type function-block palette — done (card v0.34.0).** The single generic "FB" chip was
+replaced by **one chip per type** (`FB_TYPES` → R_TRIG/F_TRIG/TON/TOF/TP/CTU/CTD/SR/RS), so a
+specific block can be dragged straight from the toolbar. `Tool` gained `fbType?`, which now
+drives everything the old `label === "FB"` check did: `_elementFor` calls `addFb(program,
+tool.fbType)` to auto-create an instance **of that type**, the popup opens on placement, and
+the top-level-only guards (`allowNestedInsert`, the nested-drop guard, branch-path seeding)
+key off `fbType`. FB chips get a smaller font (`.chip.fb`) so `R_TRIG` fits the 46px square.
 
 **Visual optimisation round (render + editor UX; medium).**
 - **TIA-style parameter display on blocks (FB / move / calc).**
@@ -686,9 +697,10 @@ via HACS, the editor panel, supported elements/outputs, current phase status.
 is **done** (card v0.21.0–v0.24.x, v0.30.0). The **editor layout & workflow batch is complete**
 (card v0.31.0–v0.33.0): split-scroll + three-block layout, preview removed, collapsible +
 tabular tag/FB lists, coil→"output" label, canvas zoom presets, and FB placement without
-pre-declaring. **Remaining/parked:** phase **4.5** (validation UX + YAML export/import polish),
-timer durations with units, canvas-style palette glyphs, cross-rung reorder-drag, and the
-README refresh — all parked until the user picks the next one.
+pre-declaring. Timer durations with units + the per-type FB palette landed in card v0.34.0.
+**Remaining/parked:** phase **4.5** (validation UX + YAML export/import polish), canvas-style
+palette glyphs, cross-rung reorder-drag, and the README refresh — all parked until the user
+picks the next one.
 
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
 
