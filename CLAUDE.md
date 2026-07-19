@@ -654,10 +654,12 @@ Grouped roughly in the order they'd logically be tackled:
   `TAG_KIND_LABELS` maps `coil`→"output" for the tag-kind `<select>` option text only; the IR/
   DSL/schema kind stays `coil` and the rung-*output* coil element is unchanged. "output" fits
   better in the tag list because such a tag can also be **REAL** (not only a boolean coil).
-- **Canvas zoom presets (small/medium/large).** A scale control so large networks fit on
-  screen. *Feasibility: high* — wrap each network SVG in a scale (CSS `zoom`/`transform` or a
-  scaled `viewBox`); presets pick a factor. Pure layout geometry is unaffected (the SVG
-  scales); only pointer→user-space math must divide by the factor.
+- **Canvas zoom presets (small/medium/large) — done (card v0.32.0).** A `_zoom` factor
+  (`ZOOM_PRESETS` 0.7/1/1.4) sizes each network SVG in **pixels** (`width=VIEW_WIDTH*zoom`,
+  `height=rendered.height*zoom`) instead of `width=100%`; `.canvas-scroll` scrolls if the
+  ladder overflows. A segmented Small/Medium/Large control sits in the pinned canvas header.
+  No pointer-math change was needed after all — `_toUserXY` uses `getScreenCTM().inverse()`,
+  which already reflects the real on-screen scale, so hit-testing stays correct at any zoom.
 
 **Docs — update both repos' `README.md`.** Both are still the initial version. Refresh at the
 end of a release round (don't block every change): what the integration/card are now, install
