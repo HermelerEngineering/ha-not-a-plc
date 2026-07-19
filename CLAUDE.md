@@ -707,9 +707,11 @@ used to work — then the canvas-interaction wishes, then rendering.
   inside the SVG, and no rung title was drawn anywhere. Now `renderNetwork` draws each
   `rung.title` above its rung (`RUNG_TITLE_H = 18`, advancing `y` before calling `renderRung`, so
   every geometry the editor reports — hit-targets, slot x's, y-bands — keeps using the `baseY` it
-  is handed, i.e. `renderRung` needed no change), and the panel's DOM header no longer repeats the
-  network title (the SVG one is canonical, as on the card). New `text.rung-title` style in both
-  `panel.ts` and `ladder-card.ts`.
+  is handed, i.e. `renderRung` needed no change). The **network** title is kept in the editor's
+  DOM header next to the `n*` id chip (user preference, v0.36.1) and `renderNetwork` therefore
+  **skips** drawing it when an `edit` config is passed; the read-only card has no header, so there
+  it is still drawn. The top padding (`TITLE_H`) is reserved either way, so rung geometry is
+  identical in both. New `text.rung-title` style in both `panel.ts` and `ladder-card.ts`.
 
 **Function-block pins as first-class references (backend + card; the big one).**
 - **Read a block's BOOL outputs — e.g. `TON.Q` on a contact.** Today only *numeric* fb outputs
