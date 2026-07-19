@@ -647,15 +647,16 @@ Grouped roughly in the order they'd logically be tackled:
 - **Collapsible Tag list and FB list — done (card v0.31.0).** Each list header is a `button.collapse`
   (chevron + title + count) toggling `_tagsOpen`/`_fbsOpen` (state, persists across re-renders);
   the table/rows render only when open.
-- **FB list as a table.** Render the function-block list like the **tag table** — name on the
-  left, then type + params in columns — instead of the current row form. *Feasibility: high.*
-- **FB placement without pre-declaring.** Today an fb must be declared before it can be
-  placed, and the palette fb tool is even **hidden** when no instance exists. Change so you can
-  **always** drag/click an fb onto the ladder and then **create/configure the instance in the
-  popup** (choose type + params inline — the popup already embeds the fb params via
-  `_renderFbInstancePanel`). *Feasibility: medium* — on drop, auto-create an instance
-  (generate a name, `addFb`, default type) and open its popup; `validate.ts` already flags an
-  unset/dangling instance until configured. Bundle with the FB-list-as-table item.
+- **FB list as a table — done (card v0.33.0).** `_renderFbs`/`_renderFbRow` now render a
+  `table.tags` with Name / Type / Parameters / delete columns (params in a `.fb-params` flex
+  cell), matching the tag table.
+- **FB placement without pre-declaring — done (card v0.33.0).** The palette **FB tool is always
+  present** (was hidden with no instance). Placing it (click a slot or drag-drop) routes through
+  `_elementFor(tool, program)`, which for the FB tool **auto-creates a fresh instance** (`addFb`,
+  default `R_TRIG`) and inserts an `fb` ref to it, then **opens the popup** (`_modal = label==="FB"`)
+  so the new instance's type + params are configured inline (`_renderFbInstancePanel`). The
+  structure editor's "+ FB" (`_addFbElement`) does the same. A function block stays top-level-only:
+  the FB tool is excluded from `allowNestedInsert` and a hard guard drops a nested FB drop.
 - **Rename the `coil` tag kind to "output" in the UI — done (card v0.31.0), *tag list only*.**
   `TAG_KIND_LABELS` maps `coil`→"output" for the tag-kind `<select>` option text only; the IR/
   DSL/schema kind stays `coil` and the rung-*output* coil element is unchanged. "output" fits
@@ -672,9 +673,12 @@ end of a release round (don't block every change): what the integration/card are
 via HACS, the editor panel, supported elements/outputs, current phase status.
 
 **Agreed next-up order:** the 2026-07-17 visual round (TIA parameter display + popup editor)
-is **done** (card v0.21.0–v0.24.x, v0.30.0). Phase **4.5** (validation UX + YAML export/import
-polish) remains parked by the user (2026-07-17). The editor layout & workflow batch above and
-the earlier backlog items stay parked until the user picks the next one.
+is **done** (card v0.21.0–v0.24.x, v0.30.0). The **editor layout & workflow batch is complete**
+(card v0.31.0–v0.33.0): split-scroll + three-block layout, preview removed, collapsible +
+tabular tag/FB lists, coil→"output" label, canvas zoom presets, and FB placement without
+pre-declaring. **Remaining/parked:** phase **4.5** (validation UX + YAML export/import polish),
+timer durations with units, canvas-style palette glyphs, cross-rung reorder-drag, and the
+README refresh — all parked until the user picks the next one.
 
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
 
