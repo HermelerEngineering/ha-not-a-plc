@@ -138,9 +138,6 @@ The engine (`custom_components/not_a_plc/engine/`) is pure standard library and
 never imports `homeassistant`, so its tests run fast and without Home Assistant;
 the integration tests use `pytest-homeassistant-custom-component`.
 
-See [`docs/project-plan.md`](docs/project-plan.md) for the full phased plan and the
-route toward becoming an official HACS integration.
-
 ## License
 
 MIT — see [LICENSE](LICENSE). You may use, modify and redistribute this freely,
