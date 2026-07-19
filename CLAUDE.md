@@ -689,6 +689,67 @@ Grouped roughly in the order they'd logically be tackled:
   No pointer-math change was needed after all — `_toUserXY` uses `getScreenCTM().inverse()`,
   which already reflects the real on-screen scale, so hit-testing stays correct at any zoom.
 
+## Editor feedback round (recorded 2026-07-19, from first real authoring use) — not started
+
+The user's first proper program-building session. Nothing here is built yet; more items may
+follow. Ordered so the two **regressions/bugs** come first — they block or confuse things that
+used to work — then the canvas-interaction wishes, then rendering.
+
+**Bugs / regressions (do these first).**
+- **Tag dropdowns no longer offer `instance.ET` — regression.** Since tag selection became a
+  `<select>` (4.2/4.3), a compare operand can no longer be set to a function-block output like
+  `t1.ET`; it is only reachable via *edit as text*. The IR and backend already accept dotted
+  operands (int v0.6.0) — the UI just never lists them. **Fix:** `_tagSelect` (or a variant) must
+  include the available `instance.<OUTPUT>` refs alongside tag names, wherever a dotted ref is
+  legal (compare operands today; contacts too once the item below lands). *Feasibility: high.*
+- **Rung titles are not drawn; the network title appears twice.** On the canvas the user sees the
+  network name repeated a second time, slightly smaller, and never sees rung titles. Cause: the
+  panel's DOM `.cv-net-head` shows `net.id` + `net.title` *and* `renderNetwork` draws
+  `network.title` inside the SVG, while `renderRung` draws no rung title at all. **Fix:** render
+  the **rung** title per rung and drop the duplicate network title (keep one of the two).
+  *Feasibility: high.*
+
+**Function-block pins as first-class references (backend + card; the big one).**
+- **Read a block's BOOL outputs — e.g. `TON.Q` on a contact.** Today only *numeric* fb outputs
+  (`ET`/`CV`) are injected into the scan values and only a `compare` operand may reference them.
+  Extend that to boolean outputs so a contact can reference `instance.Q` directly, instead of
+  routing the block's power through the rung. Touches `scan.py` (inject bool outputs alongside
+  `ET`/`CV`), `model.py` validation (`_fb_numeric_outputs` → a general per-type output table),
+  the schema, the DSL, and the card (contact editor + `power-flow`). *Feasibility: medium.*
+- **Write a block's inputs — e.g. `SR.R` as a coil target.** Fundamentally different from the
+  above: this drives a block *input* from a rung, whereas today secondary inputs are bound to a
+  **tag** in the instance declaration (option A, int v0.7.0). Allowing `( SR.R )` as an output
+  target would be a second, parallel way to wire the same pin. **Needs a design decision before
+  implementing** — either allow it and define precedence when both the declaration binding and a
+  coil write exist, or keep the tag-binding model and just make the declaration easier to fill in
+  from the popup. *Feasibility: medium, but decide the model first.*
+
+**Canvas interaction (card).**
+- **Reorder rungs by dragging** within a network (works today only via the structure editor's
+  ↑/↓). The pure `moveRung` helper already exists; this is the canvas gesture — a drag handle or
+  a draggable rung header — plus a drop indicator between rungs. *Feasibility: medium.*
+- **Drag elements between rungs** in the same network. Already noted as out of scope for stage C
+  (a reorder drag resolves within the *source* rung); the user now confirms it is wanted. Needs
+  `hitRung` consulted during a reorder drag and `moveElementAcross` generalised to a target rung.
+  *Feasibility: medium.*
+- **Drag coils/outputs.** Outputs are append-only today (a coil drag appends to the rung it lands
+  on) and can only be reordered from the inspector. Wanted: drag an output to reposition it in the
+  coil stack, like series elements. *Feasibility: medium.*
+- **Duplicate an element by Ctrl-dragging it.** `PointerEvent.ctrlKey` is available on
+  move/up, so on drop with Ctrl held, insert a deep copy instead of moving the original.
+  *Feasibility: medium.* **Open question:** duplicating an `fb` element — should it reference the
+  *same* instance (two contacts on one timer) or auto-create a fresh instance? Probably a fresh
+  instance, matching the v0.33.0 place-an-FB behaviour; decide when implementing.
+- **Edit network and rung names on the canvas** (today only via the structure editor). Inline
+  editable title fields in the network/rung headers. *Feasibility: high.* Pairs naturally with
+  the rung-title rendering fix above.
+
+**Rendering.**
+- **Compare block layout.** Put the **operator** inside the box and show the **value/tag being
+  compared against below** the box (like the fb/output blocks show their operands). Today the box
+  renders the whole `left OP right` expression inline. `render.ts` `drawCompare` +
+  `layout.ts` measurement if it needs more rows. *Feasibility: high.*
+
 **Docs — both repos' `README.md` rewritten (2026-07-19) — done.** Status is now **beta**; both
 lead with "this is not a PLC and you don't need one — it's a way of programming HA automations",
 state that the integration *and* the card repo are both required, and cover install via HACS.
@@ -702,9 +763,13 @@ is **done** (card v0.21.0–v0.24.x, v0.30.0). The **editor layout & workflow ba
 (card v0.31.0–v0.33.0): split-scroll + three-block layout, preview removed, collapsible +
 tabular tag/FB lists, coil→"output" label, canvas zoom presets, and FB placement without
 pre-declaring. Timer durations with units + the per-type FB palette landed in card v0.34.0.
-**Remaining/parked:** phase **4.5** (validation UX + YAML export/import polish), canvas-style
-palette glyphs, cross-rung reorder-drag, and the README refresh — all parked until the user
-picks the next one.
+The READMEs were refreshed 2026-07-19.
+
+**Next up:** the **editor feedback round (2026-07-19)** above — the user is now building real
+programs and will likely add more items. Start with its two **regressions/bugs** (fb outputs
+missing from the tag dropdowns; rung titles not drawn / network title duplicated), which are
+both small and unblock authoring. **Still parked:** phase **4.5** (validation UX + YAML
+export/import polish) and canvas-style palette glyphs.
 
 ## Decided for later phases (do not contradict — see `docs/project-plan.md` §9)
 
