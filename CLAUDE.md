@@ -629,12 +629,15 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
 **Editor layout & workflow (card; recorded 2026-07-18).** A batch of
 editor-page ergonomics, all card-side (`panel.ts` + CSS, a couple touch render/layout).
 Grouped roughly in the order they'd logically be tackled:
-- **Split-scroll layout — done (card v0.31.0).** `:host`/`.body` are now a flex column; the
-  pinned `.edit-top` section holds validation + tag list + FB list + palette/controls (capped
-  `max-height:60%` with internal scroll so a huge expanded list never eats the canvas), and
-  the networks live in a separate `.canvas-scroll` (`flex:1; overflow:auto`) below. `_renderCanvas`
-  was split into `_renderCanvasControls()` (pinned) + `_renderCanvasNetworks()` (scrolls; resets
-  `_geom`); the inspector modal moved up to `render()`.
+- **Split-scroll layout — done (card v0.31.0; toolbar-pin fix v0.32.0).** `:host`/`.body` are
+  now a flex column; the pinned `.edit-top` section holds validation + tag list + FB list +
+  palette/controls, and the networks live in a separate `.canvas-scroll` (`flex:1; overflow:auto`)
+  below. `_renderCanvas` was split into `_renderCanvasControls()` (pinned) +
+  `_renderCanvasNetworks()` (scrolls; resets `_geom`); the inspector modal moved up to `render()`.
+  **v0.32.0:** `.edit-top` no longer scrolls as a whole (was `max-height:60%` internal scroll,
+  which pushed the palette below the fold with a long tag list); instead each list body caps its
+  own height (`.list-body { max-height:30vh; overflow-y:auto }`), so the palette/toolbar at the
+  bottom of `.edit-top` is **always visible** above the scrolling ladder.
 - **Remove the left live-preview pane — done (card v0.31.0).** The two-column grid + `.preview`
   section + `_renderPreview` are gone (redundant with the live editor canvas); the editor is now
   full-width single-column.
