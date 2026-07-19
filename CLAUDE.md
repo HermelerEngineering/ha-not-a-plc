@@ -438,10 +438,8 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
 
 Carried over (fold into a later phase):
 
-- **New brand icons** (`custom_components/not_a_plc/brand/{icon,icon@2x,logo}.png`)
-  were replaced by the user 2026-07-13 but are **uncommitted**; they need a commit
-  and a new integration release before HACS shows them. (Note `logo.png` is currently
-  identical to `icon@2x.png` — HACS brands ideally wants a wider logo, minor.)
+- **New brand icons** — done (committed `54f5951`, artwork by the user). (Note `logo.png`
+  may still equal `icon@2x.png` — HACS brands ideally wants a wider logo, minor.)
 - A commandable `switch` coil variant for commissioning is still optional.
 
 ## MOVE / CALC outputs — REAL values (intermediate feature, requested 2026-07-16)
@@ -628,17 +626,21 @@ Grouped by a logical phase, with a feasibility note. Nothing here is built yet.
   panel feeds the positions from `validateProgram` per network in `_editConfig`. The symbol
   shows through the tint; the validation bar still lists the details.
 
-**Editor layout & workflow (card; recorded 2026-07-18) — not started.** A batch of
+**Editor layout & workflow (card; recorded 2026-07-18).** A batch of
 editor-page ergonomics, all card-side (`panel.ts` + CSS, a couple touch render/layout).
 Grouped roughly in the order they'd logically be tackled:
-- **Split-scroll layout.** Pin the tag list + toolbar/palette **static at the top**; put the
-  networks/canvas in an **independently scrollable** field below. *Feasibility: high* — a
-  sticky header region + an `overflow:auto` scroll container around the SVG networks.
-- **Remove the left live-preview pane.** Redundant now that the editor canvas itself renders
-  the program live — it's showing the same thing twice. *Feasibility: high* — drop the
-  preview column, keep the single editable live canvas.
-- **Collapsible Tag list and FB list.** A large list eats the screen; add a collapse/expand
-  toggle per section (ideally remembering open/closed). *Feasibility: high.*
+- **Split-scroll layout — done (card v0.31.0).** `:host`/`.body` are now a flex column; the
+  pinned `.edit-top` section holds validation + tag list + FB list + palette/controls (capped
+  `max-height:60%` with internal scroll so a huge expanded list never eats the canvas), and
+  the networks live in a separate `.canvas-scroll` (`flex:1; overflow:auto`) below. `_renderCanvas`
+  was split into `_renderCanvasControls()` (pinned) + `_renderCanvasNetworks()` (scrolls; resets
+  `_geom`); the inspector modal moved up to `render()`.
+- **Remove the left live-preview pane — done (card v0.31.0).** The two-column grid + `.preview`
+  section + `_renderPreview` are gone (redundant with the live editor canvas); the editor is now
+  full-width single-column.
+- **Collapsible Tag list and FB list — done (card v0.31.0).** Each list header is a `button.collapse`
+  (chevron + title + count) toggling `_tagsOpen`/`_fbsOpen` (state, persists across re-renders);
+  the table/rows render only when open.
 - **FB list as a table.** Render the function-block list like the **tag table** — name on the
   left, then type + params in columns — instead of the current row form. *Feasibility: high.*
 - **FB placement without pre-declaring.** Today an fb must be declared before it can be
@@ -648,11 +650,10 @@ Grouped roughly in the order they'd logically be tackled:
   `_renderFbInstancePanel`). *Feasibility: medium* — on drop, auto-create an instance
   (generate a name, `addFb`, default type) and open its popup; `validate.ts` already flags an
   unset/dangling instance until configured. Bundle with the FB-list-as-table item.
-- **Rename the `coil` tag kind to "output" in the UI — *tag list only*.** Just the tag-kind
-  label in the **tag list** (the kind `<select>` + that table's strings): "output" fits better
-  there because such a tag can also be **REAL** (not only a boolean coil). Do **not** rename the
-  rung-*output* coil element elsewhere, and keep the IR/DSL/schema kind `coil` for
-  compatibility. *Feasibility: high.*
+- **Rename the `coil` tag kind to "output" in the UI — done (card v0.31.0), *tag list only*.**
+  `TAG_KIND_LABELS` maps `coil`→"output" for the tag-kind `<select>` option text only; the IR/
+  DSL/schema kind stays `coil` and the rung-*output* coil element is unchanged. "output" fits
+  better in the tag list because such a tag can also be **REAL** (not only a boolean coil).
 - **Canvas zoom presets (small/medium/large).** A scale control so large networks fit on
   screen. *Feasibility: high* — wrap each network SVG in a scale (CSS `zoom`/`transform` or a
   scaled `viewBox`); presets pick a factor. Pure layout geometry is unaffected (the SVG
