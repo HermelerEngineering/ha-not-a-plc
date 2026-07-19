@@ -636,8 +636,11 @@ Grouped roughly in the order they'd logically be tackled:
   `_renderCanvasNetworks()` (scrolls; resets `_geom`); the inspector modal moved up to `render()`.
   **v0.32.0:** `.edit-top` no longer scrolls as a whole (was `max-height:60%` internal scroll,
   which pushed the palette below the fold with a long tag list); instead each list body caps its
-  own height (`.list-body { max-height:30vh; overflow-y:auto }`), so the palette/toolbar at the
-  bottom of `.edit-top` is **always visible** above the scrolling ladder.
+  own height (`.list-body { max-height:30vh; overflow-y:auto }`), so the palette/toolbar stays
+  **always visible** above the scrolling ladder. **v0.32.1:** the pinned region is split into two
+  visually-distinct blocks — `.define-block` (tags + FBs) and `.toolbar-block` (validation +
+  palette/zoom/actions) — above the `.canvas-scroll` block, so the page reads as three blocks:
+  define · toolbar · canvas.
 - **Remove the left live-preview pane — done (card v0.31.0).** The two-column grid + `.preview`
   section + `_renderPreview` are gone (redundant with the live editor canvas); the editor is now
   full-width single-column.
