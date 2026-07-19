@@ -1,57 +1,127 @@
-# Not-a-PLC — a cyclic ladder-style logic engine for Home Assistant
+# Not-a-PLC — ladder-style logic for Home Assistant
 
-A native Home Assistant custom integration that runs a **cyclic logic engine**:
-on a fixed cycle (default 500 ms) it reads a set of HA entities, evaluates a
-program built from ladder-style networks, and publishes the results as **real HA
-entities** (visible on dashboards, usable in automations, kept in history).
+**This is not a PLC — and you do not need one.** Nothing here talks to industrial
+hardware, and no PLC, Modbus bridge, sidecar container or external runtime is
+involved. Everything runs inside Home Assistant.
 
-It brings the *way of working* of ladder programming — cyclic scan, explicit
-networks, retentive state — to Home Assistant, with **full native integration**:
-no Modbus bridge, no sidecar container, no external runtime.
+What it *is*: a different **way of programming your automations**. Instead of
+trigger-based automations, Not-a-PLC runs a **cyclic scan** — on a fixed cycle
+(default 500 ms) it reads your entities into a frozen snapshot, solves a program
+built from ladder networks, and writes the results back as **real HA entities**
+(visible on dashboards, usable in automations, kept in history).
 
-> This is **not a PLC** and makes no real-time claims. It targets home-automation
-> timescales (hundreds of milliseconds), not deterministic industrial control.
+If you have ever written ladder logic, this will feel familiar: contacts, coils,
+latches, timers, counters, edge detection — drawn as rungs, evaluated top-down,
+every cycle. If you have not, it is simply a very visual and predictable way to
+express "when these conditions hold, do this".
 
-## Status: phase 1 (bit logic)
+> **No real-time claims.** It targets home-automation timescales (hundreds of
+> milliseconds), not deterministic industrial control. Do not use it for anything
+> safety-critical.
 
-What works today:
+## Status: beta
 
-- A pure, Home-Assistant-independent **engine** (`custom_components/not_a_plc/engine/`):
-  contacts (NO/NC), series (AND), parallel branches (OR), `NOT` groups, and coils
-  `=` / `S` (set) / `R` (reset), with a validated JSON program model (the "IR").
-- **Retentive state**: `S`/`R` latches carry across scans; `retain: true` memory
-  bits survive a restart (persisted to `.storage`, restored before the first scan).
-- A **coordinator** that runs the scan cycle (snapshot → solve → write-on-change)
-  on a `DataUpdateCoordinator`, with per-tag input interpretation (`true_states`)
-  and an `on_unavailable: false | hold` policy backed by input history.
-- Coils/memory bits published as `binary_sensor` entities under one "Not-a-PLC" device.
-- A lossless **text DSL** ↔ IR round-trip so programs can live in git.
-- A UI **config flow** (single instance) and a self-contained **demo program**
-  (`programs/demo.json`) whose coil follows the sun — so it works out of the box
-  without any user entities.
+Not-a-PLC is in **beta testing**. It is usable day to day, but expect rough edges
+and occasional breaking changes to the program format while things settle.
+Feedback and issue reports are very welcome.
 
-See [`docs/project-plan.md`](docs/project-plan.md) for the full phased plan
-(bit logic → graphical status view → function blocks → graphical editor) and the
-route toward becoming an official HACS integration.
+## You need both parts
 
-## Install via HACS (custom repository)
+Not-a-PLC ships as **two HACS repositories**, and you need both:
 
-This repo is a standard HACS custom-integration layout (`custom_components/not_a_plc`).
+| Part | Repository | HACS category | What it does |
+|------|-----------|---------------|--------------|
+| **Integration** | [`ha-not-a-plc`](https://github.com/HermelerEngineering/ha-not-a-plc) (this repo) | Integration | Runs the logic engine and publishes the entities |
+| **Card / editor** | [`ha-not-a-plc-card`](https://github.com/HermelerEngineering/ha-not-a-plc-card) | Dashboard | The **graphical editor panel** and a read-only status card |
+
+The integration is the engine; the card repository provides the **editor** you
+build your programs in. Without it you would have to edit the program as text, so
+install both.
+
+## Install
+
+Install **both** repositories as HACS custom repositories:
 
 1. In Home Assistant: **HACS → ⋮ (top right) → Custom repositories**.
-2. Repository: `https://github.com/HermelerEngineering/ha-not-a-plc`
-   — Category: **Integration**. Add it.
-3. Open the new **Not-a-PLC** entry and **Download** it.
-4. **Restart Home Assistant.**
-5. Add the integration via *Settings → Devices & Services → Add integration → Not-a-PLC*.
-6. You should get a `binary_sensor.not_a_plc_daylight` that is `on` during the day.
+2. Add `https://github.com/HermelerEngineering/ha-not-a-plc` — category **Integration**.
+3. Add `https://github.com/HermelerEngineering/ha-not-a-plc-card` — category **Dashboard**.
+4. Open each new entry and **Download** it.
+5. **Restart Home Assistant.**
 
-For the live status view, also install the companion
-[**Not-a-PLC Card**](https://github.com/HermelerEngineering/ha-not-a-plc-card)
-(HACS category *Dashboard*).
+Prefer a copy-in install of the integration? Copy `custom_components/not_a_plc`
+into your Home Assistant `config/custom_components/` directory and restart.
 
-Prefer a copy-in install? Copy `custom_components/not_a_plc` into your Home
-Assistant `config/custom_components/` directory and restart.
+## Creating a program
+
+A Not-a-PLC **service** is one config entry: it has its own program, its own
+entities and its own scan loop. You can run several side by side (for example one
+per room or per subsystem).
+
+**Create one:**
+
+1. *Settings → Devices & Services → Add integration → **Not-a-PLC***.
+2. Give it a name — this becomes the device name and the entity prefix, so a tag
+   `daylight` in a service called `Garden` becomes `binary_sensor.garden_daylight`.
+3. Pick a **starter program** and a **scan interval**.
+4. Done — the service starts scanning immediately.
+
+Repeat for each additional program.
+
+## Editing a program
+
+Everything is done in the UI — there is no YAML or JSON to hand-edit.
+
+Open **Not-a-PLC** in the Home Assistant sidebar (admin only). The editor page has
+three blocks:
+
+**1. Define — tags and function blocks**
+
+*Tags* are your variables. Each has a **kind**:
+
+| Kind | Meaning |
+|------|---------|
+| `input` | Reads a Home Assistant entity (optionally one of its *attributes*, e.g. a light's `brightness`) |
+| `output` | A result; published as an entity, and can optionally write back to a real entity |
+| `memory` | Internal state that survives each scan; tick *retain* to survive a restart too |
+| `temp` | Scratch value, reset every scan |
+
+and a **type**: `BOOL` (on/off), `REAL` (a number) or `TIME`.
+
+*Function blocks* are the stateful pieces — timers (`TON`, `TOF`, `TP`), counters
+(`CTU`, `CTD`), latches (`SR`, `RS`) and edge detection (`R_TRIG`, `F_TRIG`). You
+do **not** have to declare them up front: just drag one onto a rung and configure
+it there.
+
+**2. Toolbar — the palette**
+
+Drag an element from the palette onto a rung, or click a tool and then click a
+**＋** slot. Available elements:
+
+- `] [` / `]/[` — normally-open / normally-closed contact
+- `[ > ]` — comparator (`>`, `<`, `=`, …) on numeric values
+- `OR` — a parallel branch; `NOT` — inverts the power at that point
+- Function blocks — `TON`, `TOF`, `TP`, `CTU`, `CTD`, `SR`, `RS`, `R_TRIG`, `F_TRIG`
+- `( )` — a coil (the output of the rung)
+- `:=` — move a number into a REAL tag; `+ − × ÷` — calculate into a REAL tag
+- `do` — call a Home Assistant service (activate a scene, set a preset, …) on the
+  rung's rising edge
+
+**3. Canvas — the ladder**
+
+This is the live program: it is coloured in real time as it runs, so you can watch
+power flow through your logic while you edit.
+
+- **Click** an element to select it; **click again** to open its parameter popup.
+- **Drag** an element to move it within the rung.
+- Use **Small / Medium / Large** to zoom if a network is large.
+- The validation bar flags problems and marks the offending position in red.
+
+**Saving:** changes are not live until you press **Save**. The program is then
+validated, stored, and the service reloads with it. If validation fails, the error
+tells you which rung is at fault.
+
+There is also an **Advanced → edit as text (DSL)** section: a lossless text form of
+the same program, handy for copying a program between services or into git.
 
 ## Develop
 
@@ -64,9 +134,15 @@ mypy custom_components/not_a_plc
 pytest -q
 ```
 
-The engine is pure standard library, so its tests run fast and without Home
-Assistant; the integration tests use `pytest-homeassistant-custom-component`.
+The engine (`custom_components/not_a_plc/engine/`) is pure standard library and
+never imports `homeassistant`, so its tests run fast and without Home Assistant;
+the integration tests use `pytest-homeassistant-custom-component`.
+
+See [`docs/project-plan.md`](docs/project-plan.md) for the full phased plan and the
+route toward becoming an official HACS integration.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). You may use, modify and redistribute this freely,
+including commercially; the only condition is that the copyright notice and
+licence text travel with copies. It comes with no warranty.
