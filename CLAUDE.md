@@ -689,9 +689,13 @@ Grouped roughly in the order they'd logically be tackled:
   No pointer-math change was needed after all — `_toUserXY` uses `getScreenCTM().inverse()`,
   which already reflects the real on-screen scale, so hit-testing stays correct at any zoom.
 
-**Docs — update both repos' `README.md`.** Both are still the initial version. Refresh at the
-end of a release round (don't block every change): what the integration/card are now, install
-via HACS, the editor panel, supported elements/outputs, current phase status.
+**Docs — both repos' `README.md` rewritten (2026-07-19) — done.** Status is now **beta**; both
+lead with "this is not a PLC and you don't need one — it's a way of programming HA automations",
+state that the integration *and* the card repo are both required, and cover install via HACS.
+The integration README documents creating a service/program and editing it in the sidebar panel
+(tag kinds, palette elements, click/drag, Save); the card README covers the editor panel plus
+adding the **read-only** status card to a dashboard. Copyright holder in both `LICENSE` files
+(and the card's `package.json` author) is now **Hermeler Engineering**, not a personal name.
 
 **Agreed next-up order:** the 2026-07-17 visual round (TIA parameter display + popup editor)
 is **done** (card v0.21.0–v0.24.x, v0.30.0). The **editor layout & workflow batch is complete**
