@@ -702,12 +702,14 @@ used to work — then the canvas-interaction wishes, then rendering.
   via `_parseRight`, so those were still typeable). Fixed by `_realOperands()` = REAL tag names +
   `fbOutputRefs(program)`, used for the compare-left dropdown. *(If a contact ever accepts a
   dotted BOOL ref — see the fb-pins item below — it needs the same treatment.)*
-- **Rung titles are not drawn; the network title appears twice.** On the canvas the user sees the
-  network name repeated a second time, slightly smaller, and never sees rung titles. Cause: the
-  panel's DOM `.cv-net-head` shows `net.id` + `net.title` *and* `renderNetwork` draws
-  `network.title` inside the SVG, while `renderRung` draws no rung title at all. **Fix:** render
-  the **rung** title per rung and drop the duplicate network title (keep one of the two).
-  *Feasibility: high.*
+- **Rung titles not drawn; network title duplicated — fixed (card v0.36.0).** The panel's DOM
+  `.cv-net-head` showed `net.id` + `net.title` *while* `renderNetwork` also drew `network.title`
+  inside the SVG, and no rung title was drawn anywhere. Now `renderNetwork` draws each
+  `rung.title` above its rung (`RUNG_TITLE_H = 18`, advancing `y` before calling `renderRung`, so
+  every geometry the editor reports — hit-targets, slot x's, y-bands — keeps using the `baseY` it
+  is handed, i.e. `renderRung` needed no change), and the panel's DOM header no longer repeats the
+  network title (the SVG one is canonical, as on the card). New `text.rung-title` style in both
+  `panel.ts` and `ladder-card.ts`.
 
 **Function-block pins as first-class references (backend + card; the big one).**
 - **Read a block's BOOL outputs — e.g. `TON.Q` on a contact.** Today only *numeric* fb outputs
@@ -811,10 +813,12 @@ weekday"). User's proposal: a function-block instance exposing `h` (24h), `m`, `
   the rung-title rendering fix above.
 
 **Rendering.**
-- **Compare block layout.** Put the **operator** inside the box and show the **value/tag being
-  compared against below** the box (like the fb/output blocks show their operands). Today the box
-  renders the whole `left OP right` expression inline. `render.ts` `drawCompare` +
-  `layout.ts` measurement if it needs more rows. *Feasibility: high.*
+- **Compare block layout — done (card v0.36.0).** A compare now reads like a contact: the left
+  operand (with its live value) **above**, the **operator alone inside** the box, and the value/tag
+  it is compared against (with its live value) **below**. Was: left operand above and
+  `OP right` crammed inside the box. `render.ts` `drawCompare` only — the label below sits at
+  `y + 26`, inside the existing row height (a contact's `mode` already sits at `y + 24`), so no
+  `layout.ts` measurement change was needed.
 
 **Docs — both repos' `README.md` rewritten (2026-07-19) — done.** Status is now **beta**; both
 lead with "this is not a PLC and you don't need one — it's a way of programming HA automations",
