@@ -387,6 +387,16 @@ writes the IR; the drag-drop canvas is built on top later). Full breakdown in
 
 ### Known issues
 
+- **Wide networks were clipped at a fixed width — fixed (card v0.33.1).** `coilX` already grew
+  with the series (`Math.max(colX(endCol)+24, width-rightSpace)`), but the SVG `viewBox` stayed
+  at `VIEW_WIDTH` (760), so a rung longer than that had its output column drawn outside the
+  viewBox and cut off — with empty space beside it. `renderNetwork` now computes a
+  `contentWidth = max(width, …rungRequiredWidth(rung))` (`colX(measureSeries(cols)) + 24 +
+  rightSpace`), renders every rung at that width (so a network's outputs stay aligned) and
+  returns it as `RenderedNetwork.width`. The panel uses it for the `viewBox` + pixel size
+  (× zoom) and the read-only card grows its viewBox to the widest network. Networks never
+  shrink below `VIEW_WIDTH`, so small networks keep the output column on the usual line.
+
 - **Websocket flood while a timer runs — fixed (v0.7.4).** `subscribe_state` now
   gates a push on the *significant* state (`_significant_state`, which drops
   `instance.ET` keys), so a timer's ever-climbing ET no longer pushes every scan.
