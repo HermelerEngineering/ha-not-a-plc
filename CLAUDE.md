@@ -724,6 +724,39 @@ used to work — then the canvas-interaction wishes, then rendering.
   coil write exist, or keep the tag-binding model and just make the declaration easier to fill in
   from the popup. *Feasibility: medium, but decide the model first.*
 
+**Clock / calendar in the program (backend + card) — requested 2026-07-19.**
+Make the current time available so a rung can compare against it (e.g. "after 22:30 on a
+weekday"). User's proposal: a function-block instance exposing `h` (24h), `m`, `s`, `weekday`
+(1–7 = Mon–Sun), optionally date fields. **This fits the existing machinery well:**
+- `evaluate(program, image, now, previous)` already receives a full `datetime` (`scan.py`
+  `now: datetime | None`) — the engine stays pure, nothing new is injected.
+- Numeric fb outputs already have a complete path (int v0.6.0): `_solve_rung` injects
+  `instance.<OUT>` into the scan `values`, the coordinator merges them into `state_image`, a
+  `compare` operand may reference the dotted name, the DSL round-trips it, and validation
+  allows it via `_fb_numeric_outputs`. A clock block's outputs ride that same path, so
+  `[ clock.H >= 22 ]` works with no new IR concept.
+
+*Decisions to settle before implementing:*
+- **Do not call the type `TIME`** — `TIME` is already a *tag type* (`BOOL`/`REAL`/`TIME`), so
+  `fb clock = TIME` would be genuinely confusing. Prefer **`CLOCK`** (or `RTC`).
+- **Output naming/case.** Existing pins are uppercase (`Q`, `ET`, `CV`) and the DSL's dotted-ref
+  regex is case-sensitive, so use `H`, `M`, `S`, `WD` rather than `h`/`m`/`s`/`weekday`.
+- **Add "minutes since midnight"** (e.g. `TOD`, 0–1439). Comparing `H` and `M` separately makes
+  a window like 22:30–06:15 awkward (`H>22 OR (H==22 AND M>=30)`); `TOD >= 1350` is one compare.
+  Strongly recommended — likely the most-used output.
+- **Local time, not UTC.** The coordinator currently passes `dt_util.utcnow()`, so `now.hour`
+  would be UTC. Switch it to `dt_util.now()` (tz-aware **local**). This does **not** affect
+  timers: they use `now.timestamp()`, which is the same absolute epoch either way, and stays
+  continuous across DST. Check the tests for any `utcnow` assumption.
+- **Must the block be placed in a rung?** Today `instance.<OUT>` is only injected *after the
+  block is solved in a rung*, so a declared-but-unplaced instance exposes nothing. A clock has
+  no rung input and no state — the natural fit is to **solve `CLOCK` instances once at the start
+  of each scan** (which also matches "read at the start of the cycle") so its outputs are usable
+  without placing an `fb` element. If placed anyway, define `Q` (simplest: pass the rung power
+  through / always conduct).
+- Weekday 1–7 = Mon–Sun is exactly Python's `isoweekday()`. Date extras (`D`, `MO`, `Y`) are
+  cheap to add on the same block once the above is settled.
+
 **Canvas interaction (card).**
 - **Reorder rungs by dragging** within a network (works today only via the structure editor's
   ↑/↓). The pure `moveRung` helper already exists; this is the canvas gesture — a drag handle or
