@@ -822,6 +822,34 @@ weekday"). User's proposal: a function-block instance exposing `h` (24h), `m`, `
   `y + 26`, inside the existing row height (a contact's `mode` already sits at `y + 24`), so no
   `layout.ts` measurement change was needed.
 
+**Docs — a concise reference manual of all functions (requested 2026-07-20) — not started.**
+The README covers *how to use the editor*; what is missing is a **per-function reference** that
+states the exact runtime behaviour, especially the parts that are invisible in the UI and easy to
+assume wrong. (Prompted by the user asking whether a `do` output fires every scan, and by their
+recollection that `SR` is reset-dominant — it is **set**-dominant.) Suggested home: a
+`docs/reference.md` in the integration repo, linked from both READMEs. Should cover per element:
+what it does, its parameters, and its **timing/edge semantics**. The non-obvious points worth
+stating explicitly, collected so far:
+- **`do` (service call) fires once on the rung's *rising edge***, not every scan — so it does not
+  re-assert a scene/preset a user changed by hand. Use a coil `writes` binding or a REAL output
+  when you want a value *held* instead of set once. After a restart `_prev_actions` is empty, so a
+  condition already true on the first scan counts as an edge and fires once.
+- **`SR` is set-dominant, `RS` is reset-dominant** (when both inputs are true).
+- **Coils/memory are retentive across scans**; a bit not written by any rung keeps its value.
+  `temp` tags reset every scan. `retain: true` additionally survives a restart.
+- **Rungs evaluate top-down and see earlier results in the same scan**; if two rungs write the
+  same coil, the last one wins (so an `R` after an `S` makes reset dominant, and vice versa).
+- **Inputs are a frozen snapshot** taken before solving; they cannot change mid-scan. A `CLOCK` is
+  likewise read once per scan.
+- **Timers** count injected wall-clock time (not scan counts); `TON` = on-delay, `TOF` = off-delay
+  (run-on), `TP` = fixed pulse. Preset is entered as `5s`/`3m`/`1h`, stored as `preset_ms`.
+- **Counters**: `CTU` counts rising edges of the rung power, `Q = CV >= PV`; `CTD` `Q = CV <= 0`.
+- **Edges** `R_TRIG`/`F_TRIG` pulse for exactly one scan.
+- **`CLOCK`** exposes local time; `TOD` is minutes since midnight, `WD` is ISO (1 = Mon … 7 = Sun).
+- **REAL writes are not scaled** — match the target's range (e.g. `brightness` is 0–255,
+  `brightness_pct` 0–100); use a CALC to convert.
+- **Scan interval is ~500 ms and not real-time**; a pulse shorter than a scan can be missed.
+
 **Docs — both repos' `README.md` rewritten (2026-07-19) — done.** Status is now **beta**; both
 lead with "this is not a PLC and you don't need one — it's a way of programming HA automations",
 state that the integration *and* the card repo are both required, and cover install via HACS.
