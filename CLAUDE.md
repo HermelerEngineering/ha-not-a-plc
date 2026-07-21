@@ -829,9 +829,13 @@ weekday"). User's proposal: a function-block instance exposing `h` (24h), `m`, `
   instance of the same type** (`addFb`) and points the copy at it — so the copy is an independent
   block (two independent timers, not two contacts on one). Works across rungs/networks (rides the
   v0.37.0 drop resolution). Hint updated.
-- **Edit network and rung names on the canvas** (today only via the structure editor). Inline
-  editable title fields in the network/rung headers. *Feasibility: high.* Pairs naturally with
-  the rung-title rendering fix above.
+- **Edit network and rung names on the canvas — done (card v0.40.0).** The **network** name is an
+  inline `<input>` in the DOM header next to the id chip (`setNetworkTitle`). The **rung** name is
+  an inline input drawn in the SVG title row via a `<foreignObject>` (XHTML-namespaced `<input>`,
+  `CanvasEdit.onRungTitle` → `setRungTitle`); in the editor every rung reserves the title row so a
+  title can be added, while the read-only card still just draws the text when a title exists (it
+  passes no `onRungTitle`). Both inputs use `.value` binding + `@change`, so the live scan-tick
+  re-render never clobbers mid-typing (the bound title is unchanged until commit).
 
 **Rendering.**
 - **Compare block layout — done (card v0.36.0).** A compare now reads like a contact: the left
