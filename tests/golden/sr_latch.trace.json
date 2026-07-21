@@ -2,33 +2,63 @@
   "steps": [
     {
       "note": "idle",
-      "inputs": { "start": false, "stop": false },
-      "outputs": { "motor": false }
+      "inputs": {
+        "start": false,
+        "stop": false
+      },
+      "outputs": {
+        "motor": false
+      }
     },
     {
       "note": "start -> latched on",
-      "inputs": { "start": true, "stop": false },
-      "outputs": { "motor": true }
+      "inputs": {
+        "start": true,
+        "stop": false
+      },
+      "outputs": {
+        "motor": true
+      }
     },
     {
       "note": "start released -> holds",
-      "inputs": { "start": false, "stop": false },
-      "outputs": { "motor": true }
+      "inputs": {
+        "start": false,
+        "stop": false
+      },
+      "outputs": {
+        "motor": true
+      }
     },
     {
       "note": "stop -> off",
-      "inputs": { "start": false, "stop": true },
-      "outputs": { "motor": false }
+      "inputs": {
+        "start": false,
+        "stop": true
+      },
+      "outputs": {
+        "motor": false
+      }
     },
     {
-      "note": "both pressed -> set wins",
-      "inputs": { "start": true, "stop": true },
-      "outputs": { "motor": true }
+      "note": "both pressed -> reset wins (SR reset-dominant)",
+      "inputs": {
+        "start": true,
+        "stop": true
+      },
+      "outputs": {
+        "motor": false
+      }
     },
     {
       "note": "stop -> off",
-      "inputs": { "start": false, "stop": true },
-      "outputs": { "motor": false }
+      "inputs": {
+        "start": false,
+        "stop": true
+      },
+      "outputs": {
+        "motor": false
+      }
     }
   ]
 }

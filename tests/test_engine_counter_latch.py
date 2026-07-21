@@ -128,21 +128,9 @@ def test_ctd_counts_down_from_load_to_zero() -> None:
     ]
 
 
-def test_sr_latch_is_set_dominant() -> None:
+def test_sr_latch_is_reset_dominant() -> None:
+    # Siemens convention: the last input in the name dominates -> SR reset wins.
     program = _latch("SR")
-    seq = [  # (s, r)
-        (False, False),
-        (True, False),  # set
-        (False, False),  # hold
-        (False, True),  # reset
-        (True, True),  # set wins (set-dominant)
-        (False, True),  # reset
-    ]
-    assert _run(program, ["s", "r"], seq) == [False, True, True, False, True, False]
-
-
-def test_rs_latch_is_reset_dominant() -> None:
-    program = _latch("RS")
     seq = [  # (s, r)
         (False, False),
         (True, False),  # set
@@ -152,6 +140,20 @@ def test_rs_latch_is_reset_dominant() -> None:
         (True, False),  # set
     ]
     assert _run(program, ["s", "r"], seq) == [False, True, True, False, False, True]
+
+
+def test_rs_latch_is_set_dominant() -> None:
+    # Siemens convention: the last input in the name dominates -> RS set wins.
+    program = _latch("RS")
+    seq = [  # (s, r)
+        (False, False),
+        (True, False),  # set
+        (False, False),  # hold
+        (False, True),  # reset
+        (True, True),  # set wins (set-dominant)
+        (False, True),  # reset
+    ]
+    assert _run(program, ["s", "r"], seq) == [False, True, True, False, True, False]
 
 
 def test_counter_requires_positive_pv() -> None:

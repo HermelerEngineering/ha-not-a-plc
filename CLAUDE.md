@@ -187,7 +187,9 @@ schema and card, each with a golden. No card change was needed beyond the fb box
 - **Counters + latches — done (v0.7.0).** Multi-input via option A: primary input =
   rung power; secondary inputs named as tag refs in the declaration. `CTU`
   (`{pv, reset?}`, `Q = CV ≥ PV`), `CTD` (`{pv, load?}`, `Q = CV ≤ 0`), `SR`
-  (set-dominant, `{reset}`), `RS` (reset-dominant, `{reset}`). `_solve_fb` gets
+  (**reset**-dominant, `{reset}`), `RS` (**set**-dominant, `{reset}`) — the Siemens/PLC
+  convention where the last input in the name wins, **swapped from IEC 61131-3** (int v0.14.1,
+  2026-07-21; was set/reset-dominant before). `_solve_fb` gets
   `values` to read the secondary tag inputs; counters store `cv` so `CV` surfaces
   via the v0.6.0 mechanism. Validation: `pv` positive int; latch needs `reset`;
   referenced tags must exist. Goldens `sr_latch`, `count_up`. No card change.
@@ -826,7 +828,7 @@ weekday"). User's proposal: a function-block instance exposing `h` (24h), `m`, `
 The README covers *how to use the editor*; what is missing is a **per-function reference** that
 states the exact runtime behaviour, especially the parts that are invisible in the UI and easy to
 assume wrong. (Prompted by the user asking whether a `do` output fires every scan, and by their
-recollection that `SR` is reset-dominant — it is **set**-dominant.) Suggested home: a
+recollection that `SR` is reset-dominant — since int v0.14.1 it is, matching Siemens.) Suggested home: a
 `docs/reference.md` in the integration repo, linked from both READMEs. Should cover per element:
 what it does, its parameters, and its **timing/edge semantics**. The non-obvious points worth
 stating explicitly, collected so far:
@@ -834,7 +836,8 @@ stating explicitly, collected so far:
   re-assert a scene/preset a user changed by hand. Use a coil `writes` binding or a REAL output
   when you want a value *held* instead of set once. After a restart `_prev_actions` is empty, so a
   condition already true on the first scan counts as an edge and fires once.
-- **`SR` is set-dominant, `RS` is reset-dominant** (when both inputs are true).
+- **`SR` is reset-dominant, `RS` is set-dominant** (when both inputs are true) — the Siemens/PLC
+  convention (the last input in the name wins), the opposite of IEC 61131-3.
 - **Coils/memory are retentive across scans**; a bit not written by any rung keeps its value.
   `temp` tags reset every scan. `retain: true` additionally survives a restart.
 - **Rungs evaluate top-down and see earlier results in the same scan**; if two rungs write the
