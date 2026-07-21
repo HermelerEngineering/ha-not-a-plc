@@ -799,9 +799,14 @@ weekday"). User's proposal: a function-block instance exposing `h` (24h), `m`, `
   cheap to add on the same block once the above is settled.
 
 **Canvas interaction (card).**
-- **Reorder rungs by dragging** within a network (works today only via the structure editor's
-  ↑/↓). The pure `moveRung` helper already exists; this is the canvas gesture — a drag handle or
-  a draggable rung header — plus a drop indicator between rungs. *Feasibility: medium.*
+- **Reorder rungs by dragging — done (card v0.39.0).** Each rung gets a **drag handle** (a `⋮`
+  grip in the left margin, edit-only) drawn by `renderNetwork`; dragging it shows a **drop line**
+  in the target gap and, on release, reorders via the existing `moveRung`. Pure `rungDropGap`
+  (canvas.ts — pointer-y over the rung bands → gap index 0..count, by each band's midpoint) +
+  `reorderDelta` (reused from element reorder) give the `moveRung` delta; both unit-tested. New
+  `CanvasEdit.onRungPointerDown` / `rungDrop`, and `_rungDrag` state + `_rungPointerDown`/`_rungMove`/
+  `_rungUp` in the panel (same drag pattern as elements; resolves within the source network). The
+  read-only card passes neither field, so its render is byte-identical. Within-network only.
 - **Drag elements between rungs — done (card v0.37.0).** A reorder drag now resolves its drop
   slot in **whatever network/rung is under the pointer** (not just the source rung): `_dragMove`
   hit-tests via `_canvasUnder` + `nearestTarget` over that network's geometry (mirroring the
