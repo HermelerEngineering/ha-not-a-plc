@@ -815,11 +815,15 @@ weekday"). User's proposal: a function-block instance exposing `h` (24h), `m`, `
 - **Drag coils/outputs.** Outputs are append-only today (a coil drag appends to the rung it lands
   on) and can only be reordered from the inspector. Wanted: drag an output to reposition it in the
   coil stack, like series elements. *Feasibility: medium.*
-- **Duplicate an element by Ctrl-dragging it.** `PointerEvent.ctrlKey` is available on
-  move/up, so on drop with Ctrl held, insert a deep copy instead of moving the original.
-  *Feasibility: medium.* **Open question:** duplicating an `fb` element — should it reference the
-  *same* instance (two contacts on one timer) or auto-create a fresh instance? Probably a fresh
-  instance, matching the v0.33.0 place-an-FB behaviour; decide when implementing.
+- **Duplicate an element by Ctrl-dragging — done (card v0.38.0).** Holding **Ctrl/Cmd** during an
+  element drag inserts a deep copy at the drop slot and leaves the original in place (vs. a plain
+  drag which moves it). `_drag.copy` tracks the modifier (via `ev.ctrlKey || ev.metaKey` on
+  down/move) so the source is **not** ghosted while copying; `_dragUp` reads the release event and
+  branches to `_duplicateElement`. Pure `cloneElement` (elements.ts, `JSON` round-trip, unit-
+  tested for independence). **Decision taken:** duplicating an `fb` element **auto-creates a fresh
+  instance of the same type** (`addFb`) and points the copy at it — so the copy is an independent
+  block (two independent timers, not two contacts on one). Works across rungs/networks (rides the
+  v0.37.0 drop resolution). Hint updated.
 - **Edit network and rung names on the canvas** (today only via the structure editor). Inline
   editable title fields in the network/rung headers. *Feasibility: high.* Pairs naturally with
   the rung-title rendering fix above.
