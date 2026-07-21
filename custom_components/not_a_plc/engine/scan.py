@@ -301,15 +301,16 @@ def _solve_latch(
     state: dict[str, Any],
     fb_new: dict[str, dict[str, Any]],
 ) -> bool:
-    # S = rung power; R = the declared reset tag. Following the common PLC (Siemens)
-    # convention where the *last* input in the name dominates: SR is reset-dominant,
-    # RS is set-dominant (so when S and R are both true, SR -> off, RS -> on).
+    # S = rung power; R = the declared reset tag. Follows IEC 61131-3: SR is
+    # set-dominant, RS is reset-dominant (so when S and R are both true, SR -> on,
+    # RS -> off). Note this is the *opposite* of the Siemens convention; we keep
+    # the standard for portability / official HACS.
     reset = _truthy(values.get(block.params["reset"]))
     prev_q = bool(state.get("q", False))
     if block.type == "SR":
-        q = (clk or prev_q) and not reset  # reset dominant
-    else:  # RS
         q = clk or (prev_q and not reset)  # set dominant
+    else:  # RS
+        q = (clk or prev_q) and not reset  # reset dominant
     fb_new[name] = {"q": q}
     return q
 

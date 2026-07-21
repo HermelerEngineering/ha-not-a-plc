@@ -41,13 +41,13 @@
       }
     },
     {
-      "note": "both pressed -> reset wins (SR reset-dominant)",
+      "note": "both pressed -> set wins",
       "inputs": {
         "start": true,
         "stop": true
       },
       "outputs": {
-        "motor": false
+        "motor": true
       }
     },
     {
