@@ -817,9 +817,16 @@ weekday"). User's proposal: a function-block instance exposing `h` (24h), `m`, `
   network highlights the drop slot, the source network ghosts the element. Works cross-**network**
   too. Selection is cleared after the move (the old position may no longer point at it). Unit-
   tested (`test/elements.test.ts`: same-network, cross-network, within-rung reorder).
-- **Drag coils/outputs.** Outputs are append-only today (a coil drag appends to the rung it lands
-  on) and can only be reordered from the inspector. Wanted: drag an output to reposition it in the
-  coil stack, like series elements. *Feasibility: medium.*
+- **Drag coils/outputs — done (card v0.41.0).** An output on the live view can now be dragged up/
+  down its rung's coil stack (was append-only + inspector-reorder only). Mirrors the element/rung
+  reorder drags: pure `moveCoil` (elements.ts, unit-tested) reorders the output list via `moveItem`;
+  `render.ts` reports each output's vertical band (`coilBands`) via `onGeometry`, draws a drop line
+  (`coilDrag`) and ghosts the source (`coilDragSource`), and the coil hit-target is now
+  `@pointerdown` (falling through to select on a release-in-place); panel `_coilDrag` +
+  `_coilPointerDown`/`_coilMove`/`_coilUp` resolve the gap from the source rung's coil bands
+  (reusing `rungDropGap` + `reorderDelta`) and commit via `moveCoil`. Confined to the source rung.
+  **This completes the 2026-07-19 canvas-interaction batch** (reorder rungs, drag elements between
+  rungs, edit names on canvas, Ctrl-drag duplicate, drag outputs).
 - **Duplicate an element by Ctrl-dragging — done (card v0.38.0).** Holding **Ctrl/Cmd** during an
   element drag inserts a deep copy at the drop slot and leaves the original in place (vs. a plain
   drag which moves it). `_drag.copy` tracks the modifier (via `ev.ctrlKey || ev.metaKey` on
