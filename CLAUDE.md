@@ -802,10 +802,16 @@ weekday"). User's proposal: a function-block instance exposing `h` (24h), `m`, `
 - **Reorder rungs by dragging** within a network (works today only via the structure editor's
   ↑/↓). The pure `moveRung` helper already exists; this is the canvas gesture — a drag handle or
   a draggable rung header — plus a drop indicator between rungs. *Feasibility: medium.*
-- **Drag elements between rungs** in the same network. Already noted as out of scope for stage C
-  (a reorder drag resolves within the *source* rung); the user now confirms it is wanted. Needs
-  `hitRung` consulted during a reorder drag and `moveElementAcross` generalised to a target rung.
-  *Feasibility: medium.*
+- **Drag elements between rungs — done (card v0.37.0).** A reorder drag now resolves its drop
+  slot in **whatever network/rung is under the pointer** (not just the source rung): `_dragMove`
+  hit-tests via `_canvasUnder` + `nearestTarget` over that network's geometry (mirroring the
+  palette-drag path), and `_drag.target` carries `ni`/`ri`. A new pure `moveElementToRung`
+  (elements.ts) delegates to `moveElementAcross` within one rung (self-removal shift) and is a
+  plain remove-then-insert across rungs (no shift — different series). During a reorder drag every
+  network shows insert slots (`reordering` now network-agnostic in `_editConfig`); the target
+  network highlights the drop slot, the source network ghosts the element. Works cross-**network**
+  too. Selection is cleared after the move (the old position may no longer point at it). Unit-
+  tested (`test/elements.test.ts`: same-network, cross-network, within-rung reorder).
 - **Drag coils/outputs.** Outputs are append-only today (a coil drag appends to the rung it lands
   on) and can only be reordered from the inspector. Wanted: drag an output to reposition it in the
   coil stack, like series elements. *Feasibility: medium.*
