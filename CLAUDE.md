@@ -823,8 +823,13 @@ weekday"). User's proposal: a function-block instance exposing `h` (24h), `m`, `
   `render.ts` reports each output's vertical band (`coilBands`) via `onGeometry`, draws a drop line
   (`coilDrag`) and ghosts the source (`coilDragSource`), and the coil hit-target is now
   `@pointerdown` (falling through to select on a release-in-place); panel `_coilDrag` +
-  `_coilPointerDown`/`_coilMove`/`_coilUp` resolve the gap from the source rung's coil bands
-  (reusing `rungDropGap` + `reorderDelta`) and commit via `moveCoil`. Confined to the source rung.
+  `_coilPointerDown`/`_coilMove`/`_coilUp` resolve the gap from the coil bands (reusing
+  `rungDropGap` + `reorderDelta`) and commit. **Cross-rung/network (card v0.42.0):** the drag now
+  resolves to the coil stack of whatever rung is under the pointer (any rung, any network), like the
+  element drag — pure `moveCoilToRung(from{ni,ri,ci}, to{ni,ri,index})` (same-rung → `moveCoil`
+  reorder, cross-rung → remove-then-insert); `_coilDrag` carries a `target {ni,ri,gap}`, the drop
+  line renders in the target rung and the ghost stays on the source. (Minor: a target rung with no
+  outputs yet shows no drop line — the insert still lands at index 0.)
   **This completes the 2026-07-19 canvas-interaction batch** (reorder rungs, drag elements between
   rungs, edit names on canvas, Ctrl-drag duplicate, drag outputs).
 - **Duplicate an element by Ctrl-dragging — done (card v0.38.0).** Holding **Ctrl/Cmd** during an
